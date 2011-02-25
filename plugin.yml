@@ -1,0 +1,12 @@
+name: Stats
+main: com.nidefawl.Stats.Stats
+version: 0.53
+commands:
+    stats:
+       description: Stats command
+       usage: /<command> 
+              /<command> [category|statname|convert|list|help]
+              /<command> [player] [category|statname]
+    played:
+        description: Shows your played time
+        usage: /<command>
