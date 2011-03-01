@@ -27,6 +27,8 @@ import org.bukkit.event.Event.Priority;
 import org.bukkit.event.Event;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import com.nidefawl.Achievements.Achievements;
 import com.nidefawl.Stats.ItemResolver.hModItemResolver;
 import com.nidefawl.Stats.ItemResolver.itemResolver;
 import com.nidefawl.Stats.ItemResolver.myGeneralItemResolver;
@@ -42,10 +44,11 @@ import com.nidefawl.Stats.util.Updater;
 
 public class Stats extends JavaPlugin {
 	public final static Logger log = Logger.getLogger("Minecraft");
-	public final static double version = 0.53;
+	public final static double version = 0.6;
 	public final static String logprefix = "[Stats-" + version + "]";
 	public final static String defaultCategory = "stats";
 	public boolean enabled = false;
+	public boolean updated = false;
 	protected HashMap<String, PlayerStat> stats = new HashMap<String, PlayerStat>();
 	protected itemResolver items = new hModItemResolver("items.txt");
 	private static PermissionsResolver perms = null;
@@ -68,7 +71,6 @@ public class Stats extends JavaPlugin {
 		return updater;
 	}
 
-
 	public PermissionsResolver Perms() {
 		if (perms == null) {
 			log.info(logprefix + " Recreating Nijis Permissions for permissions");
@@ -85,6 +87,7 @@ public class Stats extends JavaPlugin {
 
 		}
 	}
+
 	public static void LogError(String Message) {
 		log.log(Level.SEVERE, logprefix + " " + Message);
 	}
@@ -92,6 +95,7 @@ public class Stats extends JavaPlugin {
 	public static void LogInfo(String Message) {
 		log.info(logprefix + " " + Message);
 	}
+
 	private boolean checkSchema() {
 		Connection conn = null;
 		DatabaseMetaData dbm = null;
@@ -103,7 +107,8 @@ public class Stats extends JavaPlugin {
 			dbm = conn.getMetaData();
 			rs = dbm.getTables(null, null, StatsSettings.dbTable, null);
 			if (!rs.next()) {
-				ps = conn.prepareStatement("CREATE TABLE `" + StatsSettings.dbTable + "` (" + "`player` varchar(32) NOT NULL DEFAULT '-'," + "`category` varchar(32) NOT NULL DEFAULT 'stats'," + "`stat` varchar(32) NOT NULL DEFAULT '-'," + "`value` int(11) NOT NULL DEFAULT '0'," + "PRIMARY KEY (`player`,`category`,`stat`));");
+				ps = conn.prepareStatement("CREATE TABLE `" + StatsSettings.dbTable + "` (" + "`player` varchar(32) NOT NULL DEFAULT '-'," + "`category` varchar(32) NOT NULL DEFAULT 'stats'," + "`stat` varchar(32) NOT NULL DEFAULT '-'," + "`value` int(11) NOT NULL DEFAULT '0',"
+						+ "PRIMARY KEY (`player`,`category`,`stat`));");
 				ps.executeUpdate();
 				log.info(logprefix + " " + this.getClass().getName() + " created table '" + StatsSettings.dbTable + "'.");
 			}
@@ -127,59 +132,58 @@ public class Stats extends JavaPlugin {
 		return result;
 	}
 
-
 	public void setSavedStats(Player admin, String player, String category, String key, String value) {
-			ArrayList<String> tounload = new ArrayList<String>();
-			tounload.addAll(stats.keySet());
-			for (String name : tounload) {
-				unload(name);
-			}
+		ArrayList<String> tounload = new ArrayList<String>();
+		tounload.addAll(stats.keySet());
+		for (String name : tounload) {
+			unload(name);
+		}
 
-			stats.clear();
-			int result = 0;
-			Connection conn = null;
-			PreparedStatement ps = null;
-			ResultSet rs = null;
+		stats.clear();
+		int result = 0;
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		try {
+			conn = StatsSQLConnectionManager.getConnection();
+			StringBuilder statement = new StringBuilder();
+			int conditions = 0;
+			statement.append("UPDATE " + StatsSettings.dbTable + " set value = ?");
+			if (!player.equals("*"))
+				statement.append((conditions++ == 0 ? " where" : " and") + " player = ?");
+			if (!category.equals("*"))
+				statement.append((conditions++ == 0 ? " where" : " and") + " category = ?");
+			if (!key.equals("*"))
+				statement.append((conditions++ == 0 ? " where" : " and") + " stat = ?");
+
+			ps = conn.prepareStatement(statement.toString());
+			ps.setString(1, value);
+			conditions++;
+			if (!key.equals("*"))
+				ps.setString(conditions--, key);
+			if (!category.equals("*"))
+				ps.setString(conditions--, category);
+			if (!player.equals("*"))
+				ps.setString(conditions--, player);
+			result = ps.executeUpdate();
+		} catch (SQLException ex) {
+			log.log(Level.SEVERE, logprefix + " " + this.getClass().getName() + " SQL exception", ex);
+			Messaging.send(admin, StatsSettings.premessage + ex.getMessage());
+		} finally {
 			try {
-				conn = StatsSQLConnectionManager.getConnection();
-				StringBuilder statement = new StringBuilder();
-				int conditions = 0;
-				statement.append("UPDATE " + StatsSettings.dbTable + " set value = ?");
-				if (!player.equals("*"))
-					statement.append((conditions++ == 0 ? " where" : " and") + " player = ?");
-				if (!category.equals("*"))
-					statement.append((conditions++ == 0 ? " where" : " and") + " category = ?");
-				if (!key.equals("*"))
-					statement.append((conditions++ == 0 ? " where" : " and") + " stat = ?");
-
-				ps = conn.prepareStatement(statement.toString());
-				ps.setString(1, value);
-				conditions++;
-				if (!key.equals("*"))
-					ps.setString(conditions--, key);
-				if (!category.equals("*"))
-					ps.setString(conditions--, category);
-				if (!player.equals("*"))
-					ps.setString(conditions--, player);
-				result = ps.executeUpdate();
+				if (rs != null)
+					rs.close();
+				if (ps != null)
+					ps.close();
 			} catch (SQLException ex) {
-				log.log(Level.SEVERE, logprefix + " " + this.getClass().getName() + " SQL exception", ex);
+				log.log(Level.SEVERE, logprefix + " " + this.getClass().getName() + " SQL exception on close", ex);
 				Messaging.send(admin, StatsSettings.premessage + ex.getMessage());
-			} finally {
-				try {
-					if (rs != null)
-						rs.close();
-					if (ps != null)
-						ps.close();
-				} catch (SQLException ex) {
-					log.log(Level.SEVERE, logprefix + " " + this.getClass().getName() + " SQL exception on close", ex);
-					Messaging.send(admin, StatsSettings.premessage + ex.getMessage());
-				}
 			}
-			Messaging.send(admin, StatsSettings.premessage + "Updated " + result + " stats.");
-			for (Player p : getServer().getOnlinePlayers()) {
-				load(p);
-			}
+		}
+		Messaging.send(admin, StatsSettings.premessage + "Updated " + result + " stats.");
+		for (Player p : getServer().getOnlinePlayers()) {
+			load(p);
+		}
 	}
 
 	public int editPlayerStat(PlayerStat ps, String category, String key, String value) {
@@ -219,7 +223,6 @@ public class Stats extends JavaPlugin {
 	}
 
 	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args) {
-		LogInfo("asdf");
 		if (!(sender instanceof Player))
 			return false;
 		Player player = (Player) sender;
@@ -443,6 +446,7 @@ public class Stats extends JavaPlugin {
 		list += " ";
 		return list;
 	}
+
 	public void convertFlatFiles() {
 		File dir = new File(StatsSettings.directory);
 		FilenameFilter filter = new FilenameFilter() {
@@ -450,14 +454,14 @@ public class Stats extends JavaPlugin {
 				return name.endsWith(".txt");
 			}
 		};
-		
+
 		FilenameFilter filterOld = new FilenameFilter() {
 			public boolean accept(File dir, String name) {
 				return name.endsWith(".txt.old");
 			}
 		};
 		String[] files = dir.list(filterOld);
-		if (files != null&&files.length>0) {
+		if (files != null && files.length > 0) {
 			for (int i = 0; i < files.length; i++) {
 				String location = StatsSettings.directory + File.separator + files[i];
 				String basename = files[i].substring(0, files[i].lastIndexOf("."));
@@ -467,7 +471,7 @@ public class Stats extends JavaPlugin {
 			}
 		}
 		files = dir.list(filter);
-		if (files == null||files.length==0) {
+		if (files == null || files.length == 0) {
 		}
 
 		int count = 0;
@@ -484,66 +488,75 @@ public class Stats extends JavaPlugin {
 			ps.save();
 			count++;
 		}
-		Stats.LogInfo("Converted " + count + " stat files to "+(StatsSettings.useMySQL?"MySQL":"SQLite"));
+		Stats.LogInfo("Converted " + count + " stat files to " + (StatsSettings.useMySQL ? "MySQL" : "SQLite"));
 	}
+
 	public Stats() {
-	      StatsSettings.initialize();
-	        updater = new Updater();
-	        System.setProperty("org.sqlite.lib.path", updater.getOSSpecificFolder());
-	        StatsSQLConnectionManager.getConnection();
-			try {
-				if(StatsSettings.autoUpdate) {
-					updater.checkDist();
-				} else {
-					updater.check();
+		StatsSettings.initialize();
+		updater = new Updater();
+		System.setProperty("org.sqlite.lib.path", updater.getOSSpecificFolder());
+		StatsSQLConnectionManager.getConnection();
+		try {
+			if (StatsSettings.autoUpdate) {
+				
+				updated = updater.checkDist();
+				updated |= updater.checkAchDist();
+				if(updated) {
+					LogInfo("UPDATE INSTALLED. PLEASE RESTART....");
+					return;
 				}
-				updater.update();
-			} catch (Exception e) {
-				e.printStackTrace();
+				
+			} else {
+				updater.check();
 			}
+			updater.update();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			if (StatsSettings.useMySQL) {
+				Class.forName("com.mysql.jdbc.Driver");
+			} else {
+				Class.forName("org.sqlite.JDBC");
+			}
+		} catch (ClassNotFoundException e) {
+			LogError("JDBC driver for " + (StatsSettings.useMySQL ? "MySQL" : "SQLite") + " not found. Disabling Stats");
+			getServer().getPluginManager().disablePlugin(this);
+			e.printStackTrace();
+			return;
+		}
+		Connection conn = StatsSQLConnectionManager.getConnection();
+		if (conn == null) {
+			LogError("Could not establish SQL connection. Disabling Stats");
+			getServer().getPluginManager().disablePlugin(this);
+			return;
+		} else {
 			try {
-				if (StatsSettings.useMySQL) {
-					Class.forName("com.mysql.jdbc.Driver");
-				} else {
-					Class.forName("org.sqlite.JDBC");
+				if (conn != null) {
+					conn.close();
 				}
-			} catch (ClassNotFoundException e) {
-	        	LogError("JDBC driver for "+(StatsSettings.useMySQL?"MySQL":"SQLite")+" not found. Disabling Stats");
-	            getServer().getPluginManager().disablePlugin(this);
+			} catch (SQLException e) {
 				e.printStackTrace();
 				return;
-			}	
-	        Connection conn = StatsSQLConnectionManager.getConnection();
-	        if (conn == null) {
-	        	LogError("Could not establish SQL connection. Disabling Stats");
-	            getServer().getPluginManager().disablePlugin(this);
-	            return;
-	        } else {
-	            try {
-	            	if(conn!=null) {
-	            		conn.close();
-	            	}
-	            } catch (SQLException e) {
-	                e.printStackTrace();
-	    			return;
-	            }
-	        }
-			if (!checkSchema()) {
-				LogError("Could not create table. Disabling Stats");
-	            getServer().getPluginManager().disablePlugin(this);
-				return;
 			}
-			convertFlatFiles();
-			if(new File("MyGeneral.jar").exists()) {
-				Plugin myPlug = this.getServer().getPluginManager().getPlugin("MyGeneral");
-				if (myPlug != null) {
-					LogInfo("Using MyGeneral Item Resolver");
-					setItems(new myGeneralItemResolver(myPlug));
-				}
-			}
+		}
+		if (!checkSchema()) {
+			LogError("Could not create table. Disabling Stats");
+			getServer().getPluginManager().disablePlugin(this);
+			return;
+		}
+		convertFlatFiles();
 	}
-	public void onEnable() {	
-  
+
+	public void onEnable() {
+		if(updated) return;
+		if (new File("plugins/MyGeneral.jar").exists()) {
+			Plugin myPlug = this.getServer().getPluginManager().getPlugin("MyGeneral");
+			if (myPlug != null) {
+				LogInfo("Using MyGeneral Item Resolver");
+				setItems(new myGeneralItemResolver(myPlug));
+			}
+		}
 		stats = new HashMap<String, PlayerStat>();
 		CreatePermissionResolver();
 		enabled = true;
@@ -558,6 +571,14 @@ public class Stats extends JavaPlugin {
 		}
 
 		getServer().getScheduler().scheduleAsyncRepeatingTask(this, new SaveTask(this), StatsSettings.delay * 20, StatsSettings.delay * 20);
+		
+		Plugin ach = this.getServer().getPluginManager().getPlugin("Achievements");
+		if(ach!=null) {
+			if(((Achievements)ach).enabled) {
+				((Achievements)ach).Disable();
+			}
+			((Achievements)ach).Enable();
+		}
 	}
 
 	public Player playerMatch(String name) {
@@ -579,22 +600,28 @@ public class Stats extends JavaPlugin {
 		public void run() {
 			if (!statsInstance.enabled)
 				return;
-				statsInstance.saveAll();
+			statsInstance.saveAll();
 		}
 	}
 
 	public void onDisable() {
-		getServer().getScheduler().cancelTasks(this);
 		saveAll();
-		stats = null;
+		Plugin ach = this.getServer().getPluginManager().getPlugin("Achievements");
+		if(ach!=null) {
+			if(((Achievements)ach).enabled) {
+				((Achievements)ach).Disable();
+			}
+		}
 		enabled = false;
+		getServer().getScheduler().cancelTasks(this);
+		stats = null;
 		updater.saveInternal();
 		log.info(logprefix + " " + version + " Plugin Disabled");
 	}
 
 	public void initialize() {
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_JOIN, playerListener, Priority.Normal, this);
-		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_COMMAND, playerListener, Priority.Normal, this);
+		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_COMMAND_PREPROCESS, playerListener, Priority.Normal, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_QUIT, playerListener, Priority.Normal, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_CHAT, playerListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_MOVE, playerListener, Priority.Monitor, this);
@@ -634,7 +661,6 @@ public class Stats extends JavaPlugin {
 		updateStat(player.getName(), statType, blockName, num);
 	}
 
-
 	public void updateStat(Player player, String category, String key, int val) {
 		updateStat(player.getName(), category, key, val);
 	}
@@ -657,6 +683,7 @@ public class Stats extends JavaPlugin {
 		if (StatsSettings.debugOutput)
 			log.info(logprefix + " [DEBUG]: adding " + val + " to " + category + "/" + key + " of " + player);
 	}
+
 	public void updateStatUnsafe(String player, String category, String key, int val) {
 		if (!enabled)
 			return;
@@ -723,8 +750,11 @@ public class Stats extends JavaPlugin {
 		if (ps == null)
 			return;
 		double Distance = from.toVector().distance(to.toVector());
-		if (vhc instanceof org.bukkit.entity.Boat) { ps.UpdateBoatMove(Distance); }
-		else if (vhc instanceof org.bukkit.entity.Minecart) { ps.UpdateMinecartMove(Distance); }
+		if (vhc instanceof org.bukkit.entity.Boat) {
+			ps.UpdateBoatMove(Distance);
+		} else if (vhc instanceof org.bukkit.entity.Minecart) {
+			ps.UpdateMinecartMove(Distance);
+		}
 	}
 
 	public String getCatEntries(String player, String category) {
@@ -807,21 +837,21 @@ public class Stats extends JavaPlugin {
 	}
 
 	protected void load(Player player) {
-			if (!Perms().permission(player, "/stats")) {
-				if (StatsSettings.debugOutput)
-					log.info(logprefix + " player " + player.getName() + " has no /stats permission. Not loading/logging actions");
-				return;
-			}
-			if (stats.containsKey(player.getName())) {
-				log.log(Level.SEVERE, logprefix + " attempting to load already loaded player: " + player.getName());
-				return;
-			}
-			PlayerStat ps = new PlayerStatSQL(player.getName(), this);
-			ps.load();
-			ps.skipTeleports = 2;
-			stats.put(player.getName(), ps);
+		if (!Perms().permission(player, "/stats")) {
 			if (StatsSettings.debugOutput)
-				log.info(logprefix + " player " + player.getName() + " has been loaded.");
+				log.info(logprefix + " player " + player.getName() + " has no /stats permission. Not loading/logging actions");
+			return;
+		}
+		if (stats.containsKey(player.getName())) {
+			log.log(Level.SEVERE, logprefix + " attempting to load already loaded player: " + player.getName());
+			return;
+		}
+		PlayerStat ps = new PlayerStatSQL(player.getName(), this);
+		ps.load();
+		ps.skipTeleports = 2;
+		stats.put(player.getName(), ps);
+		if (StatsSettings.debugOutput)
+			log.info(logprefix + " player " + player.getName() + " has been loaded.");
 	}
 
 	protected void unload(String player) {
@@ -837,16 +867,17 @@ public class Stats extends JavaPlugin {
 	private void saveAll() {
 		if (StatsSettings.debugOutput)
 			log.info("Stats debug: saving " + stats.size() + " players stats");
-		for(PlayerStat stat : stats.values()) {
+		for (PlayerStat stat : stats.values()) {
 			if (stat == null || playerMatch(stat.getName()) == null) {
 				stat.unload = true;
 				continue;
 			}
-			updateStat(stat.getName(), defaultCategory, "playedfor", (int)StatsSettings.delay);
+			updateStat(stat.getName(), defaultCategory, "playedfor", (int) StatsSettings.delay);
 			stat.save();
 		}
-		for(PlayerStat stat : stats.values()) {
-			if(!stat.unload) continue;
+		for (PlayerStat stat : stats.values()) {
+			if (!stat.unload)
+				continue;
 			log.log(Level.SEVERE, logprefix + " " + " onDisconnect did not happen, logging out+ unloading " + stat.getName() + " now");
 			logout(stat.getName());
 			unload(stat.getName());
@@ -893,7 +924,7 @@ public class Stats extends JavaPlugin {
 		if (ps == null)
 			return;
 		int now = (int) (System.currentTimeMillis() / 1000L);
-		
+
 		if (vhc instanceof org.bukkit.entity.Boat) {
 			if (now - ps.getLastBoatEnter() > 60) {
 				updateStat(player, "boat", "enter", 1);

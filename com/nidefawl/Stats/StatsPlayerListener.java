@@ -47,7 +47,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 *            Relevant event details
 	 */
     @Override
-	public void onPlayerCommand(PlayerChatEvent event) {
+    public void onPlayerCommandPreprocess(PlayerChatEvent event) {
 		if (event.isCancelled())
 			return;
 		plugin.updateStat(event.getPlayer(), "command");

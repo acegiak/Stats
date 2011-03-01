@@ -4,6 +4,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 
 public class StatsPlayerDeathByPlayerEvent extends org.bukkit.event.Event implements Cancellable  {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1834044792921833350L;
 	private Player player;
 	private Player killer;
 	boolean isCancelled;

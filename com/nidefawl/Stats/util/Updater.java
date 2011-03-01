@@ -32,17 +32,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Logger;
 
+import com.nidefawl.Achievements.Achievements;
 import com.nidefawl.Stats.Stats;
 
 
 public class Updater {
-
-	/**
-	 * The logging object for this class
-	 */
-	public final static Logger logger = Logger.getLogger("Minecraft");
 
 	/**
 	 * URL to the base update site
@@ -52,12 +47,16 @@ public class Updater {
 	/**
 	 * File used to obtain the latest version
 	 */
-	private final static String VERSION_FILE = "VERSION";
+	private final static String VERSION_FILE = "VERSIONDEV";
 
 	/**
 	 * File used for the distribution
 	 */
 	private final static String DIST_FILE = "Stats.jar";
+	/**
+	 * File used for the distribution
+	 */
+	private final static String ACHDIST_FILE = "Achievements.jar";
 
 	/**
 	 * List of files to download
@@ -89,8 +88,9 @@ public class Updater {
 	 * @return true if Stats should be reloaded
 	 */
 	public void check() {
-		String[] paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar"   };
+		String[] paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar"  };
 
+		paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar"  };
 		for (String path : paths) {
 			File file = new File(path);
 
@@ -105,8 +105,21 @@ public class Updater {
 		double latestVersion = getLatestPluginVersion();
 
 		if (latestVersion > Stats.version) {
-			logger.info("Update detected for Stats");
-			logger.info("Latest version: " + latestVersion);
+			Stats.LogInfo("Update detected for Stats");
+			Stats.LogInfo("Latest version: " + latestVersion);
+		}
+		if (new File("plugins/Achievements.jar").exists()) {
+			try {
+				latestVersion = getLatestAchievemntsPluginVersion();
+				if (latestVersion > Double.parseDouble(Achievements.version)) {
+					Stats.LogInfo("Update detected for Achievements");
+					Stats.LogInfo("Latest version: " + latestVersion);
+				}
+			}
+			catch (Exception e) {
+				Stats.LogError("Exception while updating Achievements plugin: "+e);
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -141,17 +154,71 @@ public class Updater {
 
 			try {
 				update();
-				logger.info("Updated successful");
+				Stats.LogInfo("Updated successful");
 				return true;
 			} catch (Exception e) {
-				logger.info("Update failed: " + e.getMessage());
+				Stats.LogInfo("Update failed: " + e.getMessage());
 				e.printStackTrace();
 			}
+		} else {
+			Stats.LogInfo("Stats plugin is up to date");
 		}
 
 		return false;
 	}
+	public boolean checkAchDist() {
 
+		if (new File("plugins/Achievements.jar").exists()) {
+			try {
+				double latestVersion = getLatestAchievemntsPluginVersion();
+				if (latestVersion > Double.parseDouble(Achievements.version)) {
+					UpdaterFile updaterFile = new UpdaterFile(UPDATE_SITE + ACHDIST_FILE);
+					updaterFile.setLocalLocation("plugins/Achievments.jar");
+					needsUpdating.add(updaterFile);
+					try {
+						update();
+						Stats.LogInfo("Updated successful");
+						return true;
+					} catch (Exception e) {
+						Stats.LogInfo("Update failed: " + e.getMessage());
+						e.printStackTrace();
+					}
+				} else {
+					Stats.LogInfo("Achievements plugin is up to date ("+(Achievements.version)+")");
+				}
+			}
+			catch (Exception e) {
+				Stats.LogError("Exception while updating Achievements plugin: "+e);
+				e.printStackTrace();
+			}
+		}
+		return false;
+	}
+	/**
+	 * Get the latest Achievemnts version
+	 * 
+	 * @return
+	 */
+	public double getLatestAchievemntsPluginVersion() {
+		try {
+			URL url = new URL(UPDATE_SITE + VERSION_FILE);
+
+			InputStream inputStream = url.openStream();
+			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+
+			bufferedReader.readLine();
+			bufferedReader.readLine();
+			double version = Double.parseDouble(bufferedReader.readLine());
+
+			bufferedReader.close();
+
+			return version;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return 0.00;
+	}
 	/**
 	 * Get the latest version
 	 * 
@@ -360,7 +427,7 @@ public class Updater {
 		double latestVersion = getLatestSQLiteVersion();
 		if (latestVersion > getCurrentSQLiteVersion()) {
 			requireBinaryUpdate();
-			logger.info("Binary update required");
+			Stats.LogInfo("Binary update required");
 			config.put("sqlite", latestVersion + "");
 		}
 
@@ -374,14 +441,14 @@ public class Updater {
 		File folder = new File(getOSSpecificFolder());
 		folder.mkdirs();
 
-		logger.info("Need to download " + needsUpdating.size() + " file(s)");
+		Stats.LogInfo("Need to download " + needsUpdating.size() + " file(s)");
 
 		Iterator<UpdaterFile> iterator = needsUpdating.iterator();
 
 		while (iterator.hasNext()) {
 			UpdaterFile item = iterator.next();
 
-			logger.info(" - Downloading file : " + item.getRemoteLocation());
+			Stats.LogInfo(" - Downloading file : " + item.getRemoteLocation());
 
 			URL url = new URL(item.getRemoteLocation());
 			File file = new File(item.getLocalLocation());
@@ -398,7 +465,7 @@ public class Updater {
 			inputStream.close();
 			outputStream.close();
 
-			logger.info("  + Download complete");
+			Stats.LogInfo("  + Download complete");
 			iterator.remove();
 		}
 
