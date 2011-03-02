@@ -44,7 +44,7 @@ import com.nidefawl.Stats.util.Updater;
 
 public class Stats extends JavaPlugin {
 	public final static Logger log = Logger.getLogger("Minecraft");
-	public final static double version = 0.6;
+	public final static double version = 0.7;
 	public final static String logprefix = "[Stats-" + version + "]";
 	public final static String defaultCategory = "stats";
 	public boolean enabled = false;
@@ -576,7 +576,10 @@ public class Stats extends JavaPlugin {
 		if(ach!=null) {
 			if(((Achievements)ach).enabled) {
 				((Achievements)ach).Disable();
+			} else if(!ach.isEnabled()) {
+				ach.onEnable();
 			}
+			
 			((Achievements)ach).Enable();
 		}
 	}
