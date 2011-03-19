@@ -28,10 +28,8 @@ import org.bukkit.event.Event;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import com.nidefawl.Achievements.Achievements;
 import com.nidefawl.Stats.ItemResolver.hModItemResolver;
 import com.nidefawl.Stats.ItemResolver.itemResolver;
-import com.nidefawl.Stats.ItemResolver.myGeneralItemResolver;
 import com.nidefawl.Stats.Permissions.GroupUserResolver;
 import com.nidefawl.Stats.Permissions.NijiPermissionsResolver;
 import com.nidefawl.Stats.Permissions.PermissionsResolver;
@@ -44,12 +42,13 @@ import com.nidefawl.Stats.util.Updater;
 
 public class Stats extends JavaPlugin {
 	public final static Logger log = Logger.getLogger("Minecraft");
-	public final static double version = 0.7;
+	public final static double version = 0.8;
 	public final static String logprefix = "[Stats-" + version + "]";
 	public final static String defaultCategory = "stats";
 	public boolean enabled = false;
 	public boolean updated = false;
 	protected HashMap<String, PlayerStat> stats = new HashMap<String, PlayerStat>();
+	protected HashMap<String, Long> lastPlayerActivity = new HashMap<String, Long>();
 	protected itemResolver items = new hModItemResolver("items.txt");
 	private static PermissionsResolver perms = null;
 	private static StatsPlayerListener playerListener;
@@ -175,6 +174,8 @@ public class Stats extends JavaPlugin {
 					rs.close();
 				if (ps != null)
 					ps.close();
+				if (conn != null)
+					conn.close();
 			} catch (SQLException ex) {
 				log.log(Level.SEVERE, logprefix + " " + this.getClass().getName() + " SQL exception on close", ex);
 				Messaging.send(admin, StatsSettings.premessage + ex.getMessage());
@@ -448,7 +449,6 @@ public class Stats extends JavaPlugin {
 	}
 
 	public void convertFlatFiles() {
-		File dir = new File(StatsSettings.directory);
 		FilenameFilter filter = new FilenameFilter() {
 			public boolean accept(File dir, String name) {
 				return name.endsWith(".txt");
@@ -460,31 +460,29 @@ public class Stats extends JavaPlugin {
 				return name.endsWith(".txt.old");
 			}
 		};
-		String[] files = dir.list(filterOld);
+		String[] files = getDataFolder().list(filterOld);
 		if (files != null && files.length > 0) {
 			for (int i = 0; i < files.length; i++) {
-				String location = StatsSettings.directory + File.separator + files[i];
 				String basename = files[i].substring(0, files[i].lastIndexOf("."));
-				File fnew = new File(location);
-				File fold = new File(StatsSettings.directory + File.separator + basename);
+				File fnew = new File(getDataFolder(), files[i]);
+				File fold = new File(getDataFolder(), basename);
 				fnew.renameTo(fold);
 			}
 		}
-		files = dir.list(filter);
+		files = getDataFolder().list(filter);
 		if (files == null || files.length == 0) {
 		}
 
 		int count = 0;
 		PlayerStatSQL ps;
 		for (int i = 0; i < files.length; i++) {
-			String location = StatsSettings.directory + File.separator + files[i];
-			File fold = new File(location);
+			File fold = new File(getDataFolder(), files[i]);
 			if (!fold.exists())
 				continue;
 
 			String basename = files[i].substring(0, files[i].lastIndexOf("."));
 			ps = new PlayerStatSQL(basename, this);
-			ps.convertFlatFile(StatsSettings.directory);
+			ps.convertFlatFile(getDataFolder().getPath());
 			ps.save();
 			count++;
 		}
@@ -492,20 +490,39 @@ public class Stats extends JavaPlugin {
 	}
 
 	public Stats() {
-		StatsSettings.initialize();
-		updater = new Updater();
+
+	}
+
+	public void onEnable() {
+		getDataFolder().mkdirs();
+		File statsDirectory = new File("stats");
+		if (statsDirectory.exists() && statsDirectory.isDirectory()) {
+			File intSettings = new File("stats", "internal.ini");
+			if (intSettings.exists()) {
+				intSettings.delete();
+			}
+			LogInfo("Moving ./stats/ directory to " + getDataFolder().getPath());
+			if (!statsDirectory.renameTo(new File(getDataFolder().getPath()))) {
+				LogError("Moving ./stats/ directory to " + getDataFolder().getPath() + " failed");
+				LogError("Please move your files manually and delete the old 'stats' directory. Thanks");
+				LogError("Disabling Stats");
+				getServer().getPluginManager().disablePlugin(this);
+				return;
+			}
+		}
+		StatsSettings.load(this);
+		updater = new Updater(this);
 		System.setProperty("org.sqlite.lib.path", updater.getOSSpecificFolder());
-		StatsSQLConnectionManager.getConnection();
 		try {
 			if (StatsSettings.autoUpdate) {
-				
+
 				updated = updater.checkDist();
 				updated |= updater.checkAchDist();
-				if(updated) {
+				if (updated) {
 					LogInfo("UPDATE INSTALLED. PLEASE RESTART....");
 					return;
 				}
-				
+
 			} else {
 				updater.check();
 			}
@@ -513,32 +530,18 @@ public class Stats extends JavaPlugin {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		try {
-			if (StatsSettings.useMySQL) {
-				Class.forName("com.mysql.jdbc.Driver");
-			} else {
-				Class.forName("org.sqlite.JDBC");
-			}
-		} catch (ClassNotFoundException e) {
-			LogError("JDBC driver for " + (StatsSettings.useMySQL ? "MySQL" : "SQLite") + " not found. Disabling Stats");
-			getServer().getPluginManager().disablePlugin(this);
-			e.printStackTrace();
-			return;
-		}
 		Connection conn = StatsSQLConnectionManager.getConnection();
-		if (conn == null) {
-			LogError("Could not establish SQL connection. Disabling Stats");
-			getServer().getPluginManager().disablePlugin(this);
-			return;
-		} else {
-			try {
-				if (conn != null) {
-					conn.close();
-				}
-			} catch (SQLException e) {
-				e.printStackTrace();
+		try {
+			if (conn == null || conn.isClosed()) {
+				LogError("Could not establish SQL connection. Disabling Stats");
+				getServer().getPluginManager().disablePlugin(this);
 				return;
 			}
+		} catch (SQLException e) {
+			LogError("Could not establish SQL connection. Disabling Stats");
+			e.printStackTrace();
+			getServer().getPluginManager().disablePlugin(this);
+			return;
 		}
 		if (!checkSchema()) {
 			LogError("Could not create table. Disabling Stats");
@@ -546,17 +549,8 @@ public class Stats extends JavaPlugin {
 			return;
 		}
 		convertFlatFiles();
-	}
-
-	public void onEnable() {
-		if(updated) return;
-		if (new File("plugins/MyGeneral.jar").exists()) {
-			Plugin myPlug = this.getServer().getPluginManager().getPlugin("MyGeneral");
-			if (myPlug != null) {
-				LogInfo("Using MyGeneral Item Resolver");
-				setItems(new myGeneralItemResolver(myPlug));
-			}
-		}
+		if (updated)
+			return;
 		stats = new HashMap<String, PlayerStat>();
 		CreatePermissionResolver();
 		enabled = true;
@@ -570,18 +564,7 @@ public class Stats extends JavaPlugin {
 			load(p);
 		}
 
-		getServer().getScheduler().scheduleAsyncRepeatingTask(this, new SaveTask(this), StatsSettings.delay * 20, StatsSettings.delay * 20);
-		
-		Plugin ach = this.getServer().getPluginManager().getPlugin("Achievements");
-		if(ach!=null) {
-			if(((Achievements)ach).enabled) {
-				((Achievements)ach).Disable();
-			} else if(!ach.isEnabled()) {
-				ach.onEnable();
-			}
-			
-			((Achievements)ach).Enable();
-		}
+		getServer().getScheduler().scheduleSyncRepeatingTask(this, new SaveTask(this), StatsSettings.delay * 20, StatsSettings.delay * 20);
 	}
 
 	public Player playerMatch(String name) {
@@ -608,22 +591,19 @@ public class Stats extends JavaPlugin {
 	}
 
 	public void onDisable() {
-		saveAll();
-		Plugin ach = this.getServer().getPluginManager().getPlugin("Achievements");
-		if(ach!=null) {
-			if(((Achievements)ach).enabled) {
-				((Achievements)ach).Disable();
-			}
+		if (enabled) {
+			saveAll();
+			enabled = false;
+			getServer().getScheduler().cancelTasks(this);
+			stats = null;
+			updater.saveInternal();
+			StatsSQLConnectionManager.closeConnection();
 		}
-		enabled = false;
-		getServer().getScheduler().cancelTasks(this);
-		stats = null;
-		updater.saveInternal();
 		log.info(logprefix + " " + version + " Plugin Disabled");
 	}
 
 	public void initialize() {
-		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_JOIN, playerListener, Priority.Normal, this);
+		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_JOIN, playerListener, Priority.Highest, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_COMMAND_PREPROCESS, playerListener, Priority.Normal, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_QUIT, playerListener, Priority.Normal, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_CHAT, playerListener, Priority.Monitor, this);
@@ -639,36 +619,36 @@ public class Stats extends JavaPlugin {
 		getServer().getPluginManager().registerEvent(Event.Type.BLOCK_INTERACT, blockListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.BLOCK_IGNITE, blockListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.BLOCK_BREAK, blockListener, Priority.Monitor, this);
-		getServer().getPluginManager().registerEvent(Event.Type.ENTITY_DEATH, entityListener, Priority.Monitor, this);
+		getServer().getPluginManager().registerEvent(Event.Type.ENTITY_DEATH, entityListener, Priority.Lowest, this);
 		getServer().getPluginManager().registerEvent(Event.Type.ENTITY_DAMAGED, entityListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.VEHICLE_ENTER, vehicleListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.VEHICLE_MOVE, vehicleListener, Priority.Monitor, this);
 	}
 
-	public void updateStat(Player player, String statType) {
-		updateStat(player, statType, 1);
+	public void updateStat(Player player, String statType, boolean resetAfkTimer) {
+		updateStat(player, statType, 1, resetAfkTimer);
 	}
 
-	public void updateStat(Player player, String statType, int num) {
-		updateStat(player.getName(), defaultCategory, statType, num);
+	public void updateStat(Player player, String statType, int num, boolean resetAfkTimer) {
+		updateStat(player.getName(), defaultCategory, statType, num, resetAfkTimer);
 	}
 
-	public void updateStat(Player player, String statType, Block block) {
-		updateStat(player, statType, block, 1);
+	public void updateStat(Player player, String statType, Block block, boolean resetAfkTimer) {
+		updateStat(player, statType, block, 1, resetAfkTimer);
 	}
 
-	public void updateStat(Player player, String statType, Block block, int num) {
+	public void updateStat(Player player, String statType, Block block, int num, boolean resetAfkTimer) {
 		if (block.getTypeId() <= 0)
 			return;
 		String blockName = getItems().getItem(block.getTypeId());
-		updateStat(player.getName(), statType, blockName, num);
+		updateStat(player.getName(), statType, blockName, num, resetAfkTimer);
 	}
 
-	public void updateStat(Player player, String category, String key, int val) {
-		updateStat(player.getName(), category, key, val);
+	public void updateStat(Player player, String category, String key, int val, boolean resetAfkTimer) {
+		updateStat(player.getName(), category, key, val, resetAfkTimer);
 	}
 
-	public void updateStat(String player, String category, String key, int val) {
+	public void updateStat(String player, String category, String key, int val, boolean resetAfkTimer) {
 		if (!enabled)
 			return;
 		if (player == null || player.length() < 1) {
@@ -683,30 +663,13 @@ public class Stats extends JavaPlugin {
 		if (cat == null)
 			cat = ps.newCategory(category);
 		cat.add(key, val);
+		if (resetAfkTimer)
+			ps.setLastUpdate();
 		if (StatsSettings.debugOutput)
 			log.info(logprefix + " [DEBUG]: adding " + val + " to " + category + "/" + key + " of " + player);
 	}
 
-	public void updateStatUnsafe(String player, String category, String key, int val) {
-		if (!enabled)
-			return;
-		if (player == null || player.length() < 1) {
-			log.log(Level.SEVERE, logprefix + " updateStat got empty player for [" + category + "] [" + key + "] [" + val + "]");
-			return;
-		}
-
-		PlayerStat ps = stats.get(player);
-		if (ps == null)
-			return;
-		Category cat = ps.get(category);
-		if (cat == null)
-			cat = ps.newCategory(category);
-		cat.addUnsafe(key, val);
-		if (StatsSettings.debugOutput)
-			log.info(logprefix + " [DEBUG]: adding " + val + " to " + category + "/" + key + " of " + player + " without touching modifed flag");
-	}
-
-	protected void setStat(String player, String category, String key, int val) {
+	public void setStat(String player, String category, String key, int val) {
 		PlayerStat ps = stats.get(player);
 		if (ps == null)
 			return;
@@ -867,17 +830,36 @@ public class Stats extends JavaPlugin {
 		}
 	}
 
-	private void saveAll() {
+	public boolean isAfk(Player p) {
+		if (!stats.containsKey(p.getName()))
+			return false;
+		return stats.get(p.getName()).isAfk();
+	}
+
+	private synchronized void saveAll() {
 		if (StatsSettings.debugOutput)
 			log.info("Stats debug: saving " + stats.size() + " players stats");
+		try {
+			Connection conn = StatsSQLConnectionManager.getConnection();
+			if (conn == null)
+				return;
+			conn.setAutoCommit(false);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 		for (PlayerStat stat : stats.values()) {
 			if (stat == null || playerMatch(stat.getName()) == null) {
 				stat.unload = true;
 				continue;
 			}
-			updateStat(stat.getName(), defaultCategory, "playedfor", (int) StatsSettings.delay);
-			stat.save();
+			if (StatsSettings.afkTimer > 0 && !stat.isAfk()) {
+				updateStat(stat.getName(), defaultCategory, "playedfor", (int) StatsSettings.delay, false);
+			} else if (StatsSettings.debugOutput) {
+				log.info("Stats debug: not updating playedfor for afk player " + stat.getName());
+			}
+			stat.save(false);
 		}
+		StatsSQLConnectionManager.closeConnection();
 		for (PlayerStat stat : stats.values()) {
 			if (!stat.unload)
 				continue;
@@ -893,11 +875,7 @@ public class Stats extends JavaPlugin {
 
 	public itemResolver getItems() {
 		if (items == null) {
-			Plugin myPlug = this.getServer().getPluginManager().getPlugin("MyGeneral");
-			if (myPlug != null) {
-				setItems(new myGeneralItemResolver(myPlug));
-			} else
-				setItems(new hModItemResolver("items.txt"));
+			setItems(new hModItemResolver("items.txt"));
 		}
 		return items;
 	}
@@ -906,7 +884,7 @@ public class Stats extends JavaPlugin {
 		int lastLog = get(player.getName(), defaultCategory, "lastlogin");
 		int now = (int) (System.currentTimeMillis() / 1000L);
 		if (now - lastLog > StatsSettings.loginRateLimit) {
-			updateStat(player, "login");
+			updateStat(player, "login", true);
 		}
 		setStat(player.getName(), defaultCategory, "lastlogin", now);
 	}
@@ -930,16 +908,21 @@ public class Stats extends JavaPlugin {
 
 		if (vhc instanceof org.bukkit.entity.Boat) {
 			if (now - ps.getLastBoatEnter() > 60) {
-				updateStat(player, "boat", "enter", 1);
+				updateStat(player, "boat", "enter", 1, true);
 				ps.setLastBoatEnter(now);
 			}
 
 		} else if (vhc instanceof org.bukkit.entity.Minecart) {
 			if (now - ps.getLastMinecartEnter() > 60) {
-				updateStat(player, "minecart", "enter", 1);
+				updateStat(player, "minecart", "enter", 1, true);
 				ps.setLastMinecartEnter(now);
 			}
 		}
+	}
+
+	public void onLoad() {
+		// TODO Auto-generated method stub
+
 	}
 
 }

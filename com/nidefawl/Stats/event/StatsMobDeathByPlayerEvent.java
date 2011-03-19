@@ -2,50 +2,34 @@ package com.nidefawl.Stats.event;
 
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Cancellable;
+import org.bukkit.event.entity.EntityDeathEvent;
 
-public class StatsMobDeathByPlayerEvent extends org.bukkit.event.Event implements Cancellable  {
+public class StatsMobDeathByPlayerEvent extends org.bukkit.event.Event {
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 2158229946386582299L;
-	private Entity entity;
 	private Player player;
 	boolean isCancelled;
+	EntityDeathEvent base;
 
-	@Override
-	public boolean isCancelled() {
-		return this.isCancelled;
-	}
-
-	@Override
-	public void setCancelled(boolean arg0) {
-		isCancelled = arg0;
-	}
-
-	public StatsMobDeathByPlayerEvent(Player player, Entity entity) {
-		super("StatsPlayerDamageEvent");
-		this.entity = entity;
+	public StatsMobDeathByPlayerEvent(EntityDeathEvent event, Player player, Entity entity) {
+		super("StatsMobDeathByPlayerEvent");
+		this.base = event;
 		this.player = player;
-		isCancelled=false;
-	}
-
-	/**
-	 * @param entity the entity to set
-	 */
-	public void setEntity(Entity entity) {
-		this.entity = entity;
+		isCancelled = false;
 	}
 
 	/**
 	 * @return the entity
 	 */
 	public Entity getEntity() {
-		return entity;
+		return this.base.getEntity();
 	}
 
 	/**
-	 * @param player the player to set
+	 * @param player
+	 *            the player to set
 	 */
 	public void setPlayer(Player player) {
 		this.player = player;
@@ -57,5 +41,5 @@ public class StatsMobDeathByPlayerEvent extends org.bukkit.event.Event implement
 	public Player getPlayer() {
 		return player;
 	}
-	
+
 }

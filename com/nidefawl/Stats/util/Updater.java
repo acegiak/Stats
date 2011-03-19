@@ -36,7 +36,6 @@ import java.util.List;
 import com.nidefawl.Achievements.Achievements;
 import com.nidefawl.Stats.Stats;
 
-
 public class Updater {
 
 	/**
@@ -47,7 +46,7 @@ public class Updater {
 	/**
 	 * File used to obtain the latest version
 	 */
-	private final static String VERSION_FILE = "VERSIONDEV";
+	private final static String VERSION_FILE = "VERSION";
 
 	/**
 	 * File used for the distribution
@@ -68,8 +67,11 @@ public class Updater {
 	 */
 	private HashMap<String, String> config = new HashMap<String, String>();
 
-	public Updater() {
-		//enableSSL();
+	private Stats plugin = null;
+
+	public Updater(Stats plugin) {
+		this.plugin = plugin;
+		// enableSSL();
 
 		/*
 		 * Default config values
@@ -88,9 +90,9 @@ public class Updater {
 	 * @return true if Stats should be reloaded
 	 */
 	public void check() {
-		String[] paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar"  };
+		String[] paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar" };
 
-		paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar"  };
+		paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar" };
 		for (String path : paths) {
 			File file = new File(path);
 
@@ -115,9 +117,8 @@ public class Updater {
 					Stats.LogInfo("Update detected for Achievements");
 					Stats.LogInfo("Latest version: " + latestVersion);
 				}
-			}
-			catch (Exception e) {
-				Stats.LogError("Exception while updating Achievements plugin: "+e);
+			} catch (Exception e) {
+				Stats.LogError("Exception while updating Achievements plugin: " + e);
 				e.printStackTrace();
 			}
 		}
@@ -127,7 +128,7 @@ public class Updater {
 	 * Force update of binaries
 	 */
 	private void requireBinaryUpdate() {
-		String[] paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath() , "lib/mysql.jar"  };
+		String[] paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar" };
 
 		for (String path : paths) {
 			UpdaterFile updaterFile = new UpdaterFile(UPDATE_SITE + path);
@@ -166,6 +167,7 @@ public class Updater {
 
 		return false;
 	}
+
 	public boolean checkAchDist() {
 
 		if (new File("plugins/Achievements.jar").exists()) {
@@ -184,16 +186,16 @@ public class Updater {
 						e.printStackTrace();
 					}
 				} else {
-					Stats.LogInfo("Achievements plugin is up to date ("+(Achievements.version)+")");
+					Stats.LogInfo("Achievements plugin is up to date (" + (Achievements.version) + ")");
 				}
-			}
-			catch (Exception e) {
-				Stats.LogError("Exception while updating Achievements plugin: "+e);
+			} catch (Exception e) {
+				Stats.LogError("Exception while updating Achievements plugin: " + e);
 				e.printStackTrace();
 			}
 		}
 		return false;
 	}
+
 	/**
 	 * Get the latest Achievemnts version
 	 * 
@@ -219,6 +221,7 @@ public class Updater {
 
 		return 0.00;
 	}
+
 	/**
 	 * Get the latest version
 	 * 
@@ -249,6 +252,7 @@ public class Updater {
 	public double getCurrentSQLiteVersion() {
 		return Double.parseDouble(config.get("sqlite"));
 	}
+
 	public String combineSplit(int startIndex, String[] string, String seperator) {
 		if (string.length == 0)
 			return "";
@@ -261,6 +265,7 @@ public class Updater {
 			builder.deleteCharAt(builder.length() - seperator.length()); // remove
 		return builder.toString();
 	}
+
 	/**
 	 * @return the latest sqlite version
 	 */
@@ -288,7 +293,7 @@ public class Updater {
 	 * @return the internal config file
 	 */
 	private File getInternalFile() {
-		return new File("stats" + File.separator + "internal.ini");
+		return new File(plugin.getDataFolder() + File.separator + "internal.ini");
 	}
 
 	/**
@@ -328,8 +333,8 @@ public class Updater {
 				 * Get the key/value
 				 */
 				String key = arr[0];
-				String value = combineSplit(1,arr, ":");
-				//value = value.substring(0, value.length() - 1);
+				String value = combineSplit(1, arr, ":");
+				// value = value.substring(0, value.length() - 1);
 
 				/*
 				 * Set the config value
@@ -438,7 +443,7 @@ public class Updater {
 		/*
 		 * Make the native folder hierarchy if needed
 		 */
-		File folder = new File(getOSSpecificFolder());
+		File folder = new File(plugin.getDataFolder(), getOSSpecificFolder());
 		folder.mkdirs();
 
 		Stats.LogInfo("Need to download " + needsUpdating.size() + " file(s)");
@@ -451,8 +456,7 @@ public class Updater {
 			Stats.LogInfo(" - Downloading file : " + item.getRemoteLocation());
 
 			URL url = new URL(item.getRemoteLocation());
-			File file = new File(item.getLocalLocation());
-
+			File file = new File(plugin.getDataFolder(), item.getLocalLocation());
 			if (file.exists()) {
 				file.delete();
 			}
@@ -475,7 +479,6 @@ public class Updater {
 		saveInternal();
 	}
 
-	
 	/**
 	 * Write an input stream to an output stream
 	 * 

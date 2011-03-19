@@ -65,10 +65,9 @@ public class PropertiesFile {
 	public boolean getBoolean(String key) {
 		if (map.containsKey(key)) {
 			return Boolean.parseBoolean(map.get(key).value);
-		} 
+		}
 		return false;
 	}
-
 
 	public void remove(String key) {
 		map.remove(key);
@@ -125,6 +124,7 @@ public class PropertiesFile {
 			fwriter = new FileWriter(file);
 			bwriter = new BufferedWriter(fwriter);
 			SortedSet<Map.Entry<String, PropertiesEntry>> results = new TreeSet<Map.Entry<String, PropertiesEntry>>(new Comparator<Map.Entry<String, PropertiesEntry>>() {
+				@Override
 				public int compare(Map.Entry<String, PropertiesEntry> a, Map.Entry<String, PropertiesEntry> b) {
 					// int d = a.getValue().compareTo(b.getValue());
 					int d = a.getKey().compareTo(b.getKey());

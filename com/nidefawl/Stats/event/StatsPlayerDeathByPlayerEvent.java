@@ -2,8 +2,9 @@ package com.nidefawl.Stats.event;
 
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
+import org.bukkit.event.entity.EntityDeathEvent;
 
-public class StatsPlayerDeathByPlayerEvent extends org.bukkit.event.Event implements Cancellable  {
+public class StatsPlayerDeathByPlayerEvent extends org.bukkit.event.Event implements Cancellable {
 	/**
 	 * 
 	 */
@@ -11,6 +12,7 @@ public class StatsPlayerDeathByPlayerEvent extends org.bukkit.event.Event implem
 	private Player player;
 	private Player killer;
 	boolean isCancelled;
+	private EntityDeathEvent base;
 
 	@Override
 	public boolean isCancelled() {
@@ -22,14 +24,17 @@ public class StatsPlayerDeathByPlayerEvent extends org.bukkit.event.Event implem
 		isCancelled = arg0;
 	}
 
-	public StatsPlayerDeathByPlayerEvent(Player player, Player killer) {
-		super("StatsPlayerDamageEvent");
+	public StatsPlayerDeathByPlayerEvent(EntityDeathEvent event, Player player, Player killer) {
+		super("StatsPlayerDeathByPlayerEvent");
+		this.base = event;
 		this.player = player;
 		this.killer = killer;
-		isCancelled=false;
+		isCancelled = false;
 	}
+
 	/**
-	 * @param player the player to set
+	 * @param player
+	 *            the player to set
 	 */
 	public void setPlayer(Player player) {
 		this.player = player;
@@ -43,10 +48,18 @@ public class StatsPlayerDeathByPlayerEvent extends org.bukkit.event.Event implem
 	}
 
 	/**
-	 * @param killer the killer to set
+	 * @param killer
+	 *            the killer to set
 	 */
 	public void setKiller(Player killer) {
 		this.killer = killer;
+	}
+
+	/**
+	 * @return the base
+	 */
+	public EntityDeathEvent getBase() {
+		return base;
 	}
 
 	/**

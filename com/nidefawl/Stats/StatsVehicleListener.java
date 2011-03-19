@@ -21,7 +21,7 @@ public class StatsVehicleListener extends VehicleListener {
 	 * 
 	 * @param event
 	 */
-    @Override
+	@Override
 	public void onVehicleCreate(VehicleCreateEvent event) {
 	}
 
@@ -30,7 +30,7 @@ public class StatsVehicleListener extends VehicleListener {
 	 * 
 	 * @param event
 	 */
-    @Override
+	@Override
 	public void onVehicleDamage(VehicleDamageEvent event) {
 	}
 
@@ -39,7 +39,7 @@ public class StatsVehicleListener extends VehicleListener {
 	 * 
 	 * @param event
 	 */
-    @Override
+	@Override
 	public void onVehicleBlockCollision(VehicleBlockCollisionEvent event) {
 	}
 
@@ -48,7 +48,7 @@ public class StatsVehicleListener extends VehicleListener {
 	 * 
 	 * @param event
 	 */
-    @Override
+	@Override
 	public void onVehicleEntityCollision(VehicleEntityCollisionEvent event) {
 	}
 
@@ -57,7 +57,7 @@ public class StatsVehicleListener extends VehicleListener {
 	 * 
 	 * @param event
 	 */
-    @Override
+	@Override
 	public void onVehicleEnter(VehicleEnterEvent event) {
 		if (!(event.getEntered() instanceof Player))
 			return;
@@ -69,7 +69,7 @@ public class StatsVehicleListener extends VehicleListener {
 	 * 
 	 * @param event
 	 */
-    @Override
+	@Override
 	public void onVehicleExit(VehicleExitEvent event) {
 	}
 
@@ -78,7 +78,7 @@ public class StatsVehicleListener extends VehicleListener {
 	 * 
 	 * @param event
 	 */
-    @Override
+	@Override
 	public void onVehicleMove(VehicleMoveEvent event) {
 		if (event.getVehicle() == null)
 			return;

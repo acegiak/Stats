@@ -6,7 +6,6 @@ import java.sql.*;
 import com.nidefawl.Stats.Stats;
 import com.nidefawl.Stats.StatsSettings;
 
-
 public class PlayerStatSQL extends PlayerStat {
 	static final Logger log = Logger.getLogger("Minecraft");
 	public final String logprefix = "[Stats-" + Stats.version + "]";
@@ -17,36 +16,40 @@ public class PlayerStatSQL extends PlayerStat {
 		this.plugin = plugin;
 	}
 
-	public void save() {
+	@Override
+	public void save(boolean close) {
 		Connection conn = null;
 		PreparedStatement ps = null;
 
 		try {
 			conn = StatsSQLConnectionManager.getConnection();
-			conn.setAutoCommit(false);
-			for(String catName : categories.keySet()) {
+			if (close) {
+				conn.setAutoCommit(false);
+			}
+			for (String catName : categories.keySet()) {
 				Category cat = categories.get(catName);
 				if (!cat.modified) {
 					continue;
 				}
-				for(String statName : cat.stats.keySet()) {
+				for (String statName : cat.stats.keySet()) {
 					int value = cat.get(statName);
-					ps = conn.prepareStatement("UPDATE " + StatsSettings.dbTable + " set value=? where player = ? and category = ? and stat = ?;", Statement.RETURN_GENERATED_KEYS);
-					
+					ps = conn.prepareStatement(StatsSQLConnectionManager.getPreparedPlayerStatUpdateStatement());
+
 					ps.setInt(1, value);
 					ps.setString(2, getName());
 					ps.setString(3, catName);
 					ps.setString(4, statName);
-					if(ps.executeUpdate()==0) {
-						ps = conn.prepareStatement("INSERT INTO " + StatsSettings.dbTable + " (player,category,stat,value) VALUES(?,?,?,?);", Statement.RETURN_GENERATED_KEYS);
+					if (ps.executeUpdate() == 0) {
+						Stats.LogInfo("new stat!!!!");
+						ps = conn.prepareStatement(StatsSQLConnectionManager.getPreparedPlayerStatInsertStatement());
 						ps.setString(1, getName());
 						ps.setString(2, catName);
-						ps.setString(3, statName);						
+						ps.setString(3, statName);
 						ps.setInt(4, value);
 						ps.executeUpdate();
 					}
 				}
-				cat.modified=false;
+				cat.modified = false;
 			}
 			conn.commit();
 		} catch (SQLException ex) {
@@ -54,12 +57,12 @@ public class PlayerStatSQL extends PlayerStat {
 			ex.printStackTrace();
 		} finally {
 			try {
-                if (ps != null) {
-                    ps.close();
-                }
-            	if(conn != null) {
-                    conn.close();
-            	}
+				if (ps != null) {
+					ps.close();
+				}
+				if (conn != null && close) {
+					conn.close();
+				}
 			} catch (SQLException ex) {
 				Stats.LogError("SQL exception: " + ex.getMessage());
 				ex.printStackTrace();
@@ -67,6 +70,7 @@ public class PlayerStatSQL extends PlayerStat {
 		}
 	}
 
+	@Override
 	public void load() {
 		if (!plugin.enabled)
 			return;
@@ -92,13 +96,18 @@ public class PlayerStatSQL extends PlayerStat {
 					rs.close();
 				if (ps != null)
 					ps.close();
-            	if(conn != null) {
-                    conn.close();
-            	}
+				if (conn != null) {
+					conn.close();
+				}
 			} catch (SQLException ex) {
 				Stats.LogError("SQL exception (on close): " + ex.getMessage());
 				ex.printStackTrace();
 			}
 		}
+	}
+
+	@Override
+	public void save() {
+		save(true);
 	}
 }

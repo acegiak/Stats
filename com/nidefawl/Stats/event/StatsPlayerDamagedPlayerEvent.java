@@ -22,16 +22,18 @@ public class StatsPlayerDamagedPlayerEvent extends org.bukkit.event.Event implem
 	public void setCancelled(boolean arg0) {
 		isCancelled = arg0;
 	}
+
 	public StatsPlayerDamagedPlayerEvent(Player player, Player damaged, int damage) {
-		super("StatsPlayerDamageEvent");
+		super("StatsPlayerDamagedPlayerEvent");
 		this.player = player;
 		this.damaged = damaged;
 		this.damage = damage;
-		isCancelled=false;
+		isCancelled = false;
 	}
 
 	/**
-	 * @param player the player to set
+	 * @param player
+	 *            the player to set
 	 */
 	public void setPlayer(Player player) {
 		this.player = player;
@@ -45,7 +47,8 @@ public class StatsPlayerDamagedPlayerEvent extends org.bukkit.event.Event implem
 	}
 
 	/**
-	 * @param damage the damage to set
+	 * @param damage
+	 *            the damage to set
 	 */
 	public void setDamage(int damage) {
 		this.damage = damage;
@@ -59,7 +62,8 @@ public class StatsPlayerDamagedPlayerEvent extends org.bukkit.event.Event implem
 	}
 
 	/**
-	 * @param damaged the damaged to set
+	 * @param damaged
+	 *            the damaged to set
 	 */
 	public void setDamagedPlayer(Player damaged) {
 		this.damaged = damaged;

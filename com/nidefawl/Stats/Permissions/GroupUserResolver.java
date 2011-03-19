@@ -17,6 +17,7 @@ public class GroupUserResolver implements PermissionsResolver {
 		check();
 	}
 
+	@Override
 	public boolean check() {
 		if (perms == null) {
 			Plugin checkPlugin = plugin.getServer().getPluginManager().getPlugin("GroupUsers");
@@ -30,28 +31,34 @@ public class GroupUserResolver implements PermissionsResolver {
 		return true;
 	}
 
+	@Override
 	public boolean permission(Player player, String permCmd) {
 		if (!check())
 			return false;
 		return perms.playerCanUseCommand(player, permCmd);
 	}
 
+	@Override
 	public String getGroup(String player) {
 		return "";
 	}
 
+	@Override
 	public String getGroupPrefix(String player) {
 		return "";
 	}
 
+	@Override
 	public String getGroupSuffix(String player) {
 		return "";
 	}
 
+	@Override
 	public boolean canGroupBuild(String group) {
 		return true;
 	}
 
+	@Override
 	public boolean inGroup(Player player, String group) {
 		if (!check())
 			return false;

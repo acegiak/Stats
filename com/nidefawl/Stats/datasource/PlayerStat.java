@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 import org.bukkit.block.Block;
+import com.nidefawl.Stats.StatsSettings;
 
 public abstract class PlayerStat {
 	private String name;
@@ -16,6 +17,7 @@ public abstract class PlayerStat {
 	private double boatDistance = 0;
 	private int lastBoatEnter = 0;
 	private int lastMinecartEnter = 0;
+	private long lastUpdate = System.currentTimeMillis();
 	public int skipTeleports = 0;
 	Block lastFace = null;
 	public boolean unload = false;
@@ -51,8 +53,7 @@ public abstract class PlayerStat {
 		cat.put(key, val);
 	}
 
-	protected void copy(PlayerStat from)
-	{
+	protected void copy(PlayerStat from) {
 		this.name = from.name;
 		this.categories = new HashMap<String, Category>(from.categories);
 	}
@@ -70,37 +71,43 @@ public abstract class PlayerStat {
 
 	public abstract void save();
 
+	public abstract void save(boolean close);
+
 	public abstract void load();
 
 	public void UpdateMove(double distance) {
 		moveDistance += distance;
-		if(moveDistance>10.0F) {
+		if (moveDistance > 10.0F) {
 			Category cat = categories.get("stats");
 			if (cat == null)
 				cat = newCategory("stats");
 			cat.add("move", 10);
 			moveDistance = 0;
+			setLastUpdate();
 		}
 	}
+
 	public void UpdateMinecartMove(double distance) {
 		minecartDistance += distance;
-		if(minecartDistance>=10.0F) {
+		if (minecartDistance >= 10.0F) {
 			Category cat = categories.get("minecart");
 			if (cat == null)
 				cat = newCategory("minecart");
 			cat.add("move", 10);
 			minecartDistance = 0;
+			setLastUpdate();
 		}
 	}
 
 	public void UpdateBoatMove(double distance) {
 		boatDistance += distance;
-		if(boatDistance>=10.0F) {
+		if (boatDistance >= 10.0F) {
 			Category cat = categories.get("boat");
 			if (cat == null)
 				cat = newCategory("boat");
 			cat.add("move", 10);
 			boatDistance = 0;
+			setLastUpdate();
 		}
 	}
 
@@ -121,7 +128,8 @@ public abstract class PlayerStat {
 	}
 
 	/**
-	 * @param name the name to set
+	 * @param name
+	 *            the name to set
 	 */
 	public void setName(String name) {
 		this.name = name;
@@ -132,5 +140,21 @@ public abstract class PlayerStat {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * @param lastUpdate
+	 *            the lastUpdate to set
+	 */
+	public void setLastUpdate() {
+		this.lastUpdate = System.currentTimeMillis();
+
+	}
+
+	/**
+	 * @return the lastUpdate
+	 */
+	public boolean isAfk() {
+		return System.currentTimeMillis() - lastUpdate > StatsSettings.afkTimer * 1000;
 	}
 }

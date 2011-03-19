@@ -16,6 +16,7 @@ public class NijiPermissionsResolver implements PermissionsResolver {
 		check();
 	}
 
+	@Override
 	public boolean check() {
 		if (perms == null) {
 			Plugin checkPlugin = plugin.getServer().getPluginManager().getPlugin("Permissions");
@@ -30,6 +31,7 @@ public class NijiPermissionsResolver implements PermissionsResolver {
 		return true;
 	}
 
+	@Override
 	public boolean permission(Player player, String permCmd) {
 
 		if (!check())
@@ -37,24 +39,28 @@ public class NijiPermissionsResolver implements PermissionsResolver {
 		return perms.getHandler().permission(player, permCmd);
 	}
 
+	@Override
 	public String getGroup(String player) {
 		if (!check())
 			return "";
 		return perms.getHandler().getGroup(player);
 	}
 
+	@Override
 	public String getGroupPrefix(String player) {
 		if (!check())
 			return "";
 		return perms.getHandler().getGroupPrefix(player);
 	}
 
+	@Override
 	public String getGroupSuffix(String player) {
 		if (!check())
 			return "";
 		return perms.getHandler().getGroupSuffix(player);
 	}
 
+	@Override
 	public boolean canGroupBuild(String group) {
 		if (!check())
 			return false;

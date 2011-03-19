@@ -1,6 +1,7 @@
 package com.nidefawl.Stats;
 
 import org.bukkit.Server;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 /**
@@ -178,6 +179,19 @@ public class Messaging {
 	 */
 	public static void broadcast(Server server, String message) {
 		for (Player p : server.getOnlinePlayers()) {
+			p.sendMessage(parse(message));
+		}
+	}
+
+	/**
+	 * Brodcast a message to every player in given world.
+	 * 
+	 * @param message
+	 *            - The message to be sent.
+	 */
+
+	public static void worldbroadcast(World world, String message) {
+		for (Player p : world.getPlayers()) {
 			p.sendMessage(parse(message));
 		}
 	}

@@ -5,7 +5,6 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.logging.Logger;
 
-
 public class Category {
 	public boolean modified = false;
 	protected HashMap<String, Integer> stats;
@@ -43,15 +42,6 @@ public class Category {
 		}
 		Integer oldval = stats.get(name);
 		put(name, value + oldval);
-	}
-	
-	public void addUnsafe(String name, Integer value) {
-		if (!stats.containsKey(name)) {
-			put(name, value);
-			return;
-		}
-		Integer oldval = stats.get(name);
-		stats.put(name, value+oldval);
 	}
 
 	Iterator<String> iterator() {

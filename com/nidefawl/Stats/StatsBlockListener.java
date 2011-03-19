@@ -30,7 +30,7 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onBlockDamage(BlockDamageEvent event) {
 	}
 
@@ -40,8 +40,8 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
-    public void onSignChange(SignChangeEvent event) {
+	@Override
+	public void onSignChange(SignChangeEvent event) {
 	}
 
 	/**
@@ -50,8 +50,8 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
-    public void onBlockBurn(BlockBurnEvent event) {
+	@Override
+	public void onBlockBurn(BlockBurnEvent event) {
 	}
 
 	/**
@@ -60,21 +60,21 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
-    public void onBlockBreak(BlockBreakEvent event) {
+	@Override
+	public void onBlockBreak(BlockBreakEvent event) {
 		if (event.isCancelled())
 			return;
 		if (!(event.getPlayer() instanceof Player))
 			return;
-		plugin.updateStat(event.getPlayer(), "blockdestroy", event.getBlock());
-		plugin.updateStat(event.getPlayer(), "totalblockdestroy");
+		plugin.updateStat(event.getPlayer(), "blockdestroy", event.getBlock(), true);
+		plugin.updateStat(event.getPlayer(), "totalblockdestroy", true);
 	}
 
 	/**
 	 * Called when we try to place a block, to see if we can build it
 	 */
-    @Override
-    public void onBlockCanBuild(BlockCanBuildEvent event) {
+	@Override
+	public void onBlockCanBuild(BlockCanBuildEvent event) {
 	}
 
 	/**
@@ -83,8 +83,8 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
-    public void onBlockFlow(BlockFromToEvent event) {
+	@Override
+	public void onBlockFlow(BlockFromToEvent event) {
 	}
 
 	/**
@@ -93,13 +93,13 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
-    public void onBlockIgnite(BlockIgniteEvent event) {
+	@Override
+	public void onBlockIgnite(BlockIgniteEvent event) {
 		if (event.isCancelled())
 			return;
 		if (!(event.getPlayer() instanceof Player))
 			return;
-		plugin.updateStat(event.getPlayer(), "lighter");
+		plugin.updateStat(event.getPlayer(), "lighter", true);
 
 	}
 
@@ -109,7 +109,7 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onBlockPhysics(BlockPhysicsEvent event) {
 	}
 
@@ -119,14 +119,14 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onBlockPlace(BlockPlaceEvent event) {
 		if (event.isCancelled())
 			return;
 		if (!(event.getPlayer() instanceof Player))
 			return;
-		plugin.updateStat(event.getPlayer(), "blockcreate", event.getBlockPlaced());
-		plugin.updateStat(event.getPlayer(), "totalblockcreate");
+		plugin.updateStat(event.getPlayer(), "blockcreate", event.getBlockPlaced(), true);
+		plugin.updateStat(event.getPlayer(), "totalblockcreate", true);
 	}
 
 	/**
@@ -135,14 +135,14 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onBlockInteract(BlockInteractEvent event) {
 		if (event.isCancelled())
 			return;
 		if (!event.isPlayer())
 			return;
 		if (event.getBlock().getType() == Material.CHEST) {
-			plugin.updateStat((Player) event.getEntity(), "openchest");
+			plugin.updateStat((Player) event.getEntity(), "openchest", true);
 		}
 	}
 
@@ -152,7 +152,7 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onBlockRightClick(BlockRightClickEvent event) {
 
 	}
@@ -164,8 +164,8 @@ public class StatsBlockListener extends BlockListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
-    public void onBlockRedstoneChange(BlockRedstoneEvent event) {
+	@Override
+	public void onBlockRedstoneChange(BlockRedstoneEvent event) {
 	}
 
 	/**

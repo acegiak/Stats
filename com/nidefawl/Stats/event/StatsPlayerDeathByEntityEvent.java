@@ -3,6 +3,7 @@ package com.nidefawl.Stats.event;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
+import org.bukkit.event.entity.EntityDeathEvent;
 
 public class StatsPlayerDeathByEntityEvent extends org.bukkit.event.Event implements Cancellable {
 	/**
@@ -12,6 +13,7 @@ public class StatsPlayerDeathByEntityEvent extends org.bukkit.event.Event implem
 	private Player player;
 	private Entity entity;
 	boolean isCancelled;
+	private EntityDeathEvent base;
 
 	@Override
 	public boolean isCancelled() {
@@ -23,14 +25,18 @@ public class StatsPlayerDeathByEntityEvent extends org.bukkit.event.Event implem
 		isCancelled = arg0;
 	}
 
-	public StatsPlayerDeathByEntityEvent(Player player, Entity entity) {
-		super("StatsPlayerDamageEvent");
+	public StatsPlayerDeathByEntityEvent(EntityDeathEvent event, Player player, Entity entity) {
+
+		super("StatsPlayerDeathByEntityEvent");
+		this.base = event;
 		this.player = player;
 		this.entity = entity;
-		isCancelled=false;
+		isCancelled = false;
 	}
+
 	/**
-	 * @param player the player to set
+	 * @param player
+	 *            the player to set
 	 */
 	public void setPlayer(Player player) {
 		this.player = player;
@@ -44,7 +50,8 @@ public class StatsPlayerDeathByEntityEvent extends org.bukkit.event.Event implem
 	}
 
 	/**
-	 * @param entity the entity to set
+	 * @param entity
+	 *            the entity to set
 	 */
 	public void setEntity(Entity entity) {
 		this.entity = entity;
@@ -57,5 +64,11 @@ public class StatsPlayerDeathByEntityEvent extends org.bukkit.event.Event implem
 		return entity;
 	}
 
+	/**
+	 * @return the base
+	 */
+	public EntityDeathEvent getBase() {
+		return base;
+	}
 
 }

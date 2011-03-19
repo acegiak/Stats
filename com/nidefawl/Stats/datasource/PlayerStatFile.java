@@ -19,9 +19,11 @@ public class PlayerStatFile extends PlayerStat {
 		this.directory = directory;
 	}
 
+	@Override
 	public void save() {
 	}
 
+	@Override
 	public void load() {
 		String location = directory + File.separator + getName() + ".txt";
 
@@ -50,5 +52,9 @@ public class PlayerStatFile extends PlayerStat {
 			log.log(Level.SEVERE, logprefix + " Exception while reading " + location, ex);
 			return;
 		}
+	}
+
+	@Override
+	public void save(boolean close) {
 	}
 }

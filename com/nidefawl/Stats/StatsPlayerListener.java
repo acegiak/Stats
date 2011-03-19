@@ -19,7 +19,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerQuit(PlayerEvent event) {
 		plugin.logout(event.getPlayer().getName());
 		plugin.unload(event.getPlayer().getName());
@@ -32,12 +32,12 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerChat(PlayerChatEvent event) {
 		if (event.isCancelled())
 			return;
-		plugin.updateStat(event.getPlayer(), "chat");
-		plugin.updateStat(event.getPlayer(), "chatletters", event.getMessage().length());
+		plugin.updateStat(event.getPlayer(), "chat", true);
+		plugin.updateStat(event.getPlayer(), "chatletters", event.getMessage().length(), true);
 	}
 
 	/**
@@ -46,11 +46,11 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
-    public void onPlayerCommandPreprocess(PlayerChatEvent event) {
+	@Override
+	public void onPlayerCommandPreprocess(PlayerChatEvent event) {
 		if (event.isCancelled())
 			return;
-		plugin.updateStat(event.getPlayer(), "command");
+		plugin.updateStat(event.getPlayer(), "command", true);
 	}
 
 	/**
@@ -59,7 +59,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerMove(PlayerMoveEvent event) {
 		if (event.isCancelled())
 			return;
@@ -73,7 +73,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerTeleport(PlayerMoveEvent event) {
 		if (event.isCancelled())
 			return;
@@ -82,11 +82,11 @@ public class StatsPlayerListener extends PlayerListener {
 		PlayerStat ps = plugin.stats.get(event.getPlayer().getName());
 		if (ps == null)
 			return;
-		if (ps.skipTeleports>0) {
+		if (ps.skipTeleports > 0) {
 			ps.skipTeleports--;
 			return;
 		}
-		plugin.updateStat(event.getPlayer(), "teleport");
+		plugin.updateStat(event.getPlayer(), "teleport", false);
 	}
 
 	/**
@@ -95,24 +95,24 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerItem(PlayerItemEvent event) {
-		if (event.isCancelled()||event.getBlockFace()==null)
+		if (event.isCancelled() || event.getBlockFace() == null)
 			return;
-        switch (event.getMaterial()) {
-        case LAVA_BUCKET:
-        case WATER_BUCKET:
-        case SIGN:
-        case BUCKET:
-        case CAKE_BLOCK:
-        case FLINT_AND_STEEL:
-        case TNT:
-    		plugin.updateStat(event.getPlayer(), "itemuse", plugin.getItems().getItem(event.getMaterial().getId()), 1);
-    		break;
-    	default:
-    		break;
-        }
-		
+		switch (event.getMaterial()) {
+		case LAVA_BUCKET:
+		case WATER_BUCKET:
+		case SIGN:
+		case BUCKET:
+		case CAKE_BLOCK:
+		case FLINT_AND_STEEL:
+		case TNT:
+			plugin.updateStat(event.getPlayer(), "itemuse", plugin.getItems().getItem(event.getMaterial().getId()), 1, false);
+			break;
+		default:
+			break;
+		}
+
 	}
 
 	/**
@@ -121,7 +121,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerJoin(PlayerEvent event) {
 		plugin.load(event.getPlayer());
 		plugin.login(event.getPlayer());
@@ -133,10 +133,10 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerAnimation(PlayerAnimationEvent event) {
 		if (event.getAnimationType() == PlayerAnimationType.ARM_SWING && event.getPlayer().getItemInHand().getType() == Material.AIR) {
-			plugin.updateStat(event.getPlayer(), "armswing");
+			plugin.updateStat(event.getPlayer(), "armswing", false);
 		}
 	}
 
@@ -146,9 +146,9 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerEggThrow(PlayerEggThrowEvent event) {
-		plugin.updateStat(event.getPlayer(), "eggthrow");
+		plugin.updateStat(event.getPlayer(), "eggthrow", false);
 	}
 
 	/**
@@ -157,14 +157,18 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerDropItem(PlayerDropItemEvent event) {
-    	if(event.getItemDrop()==null) return;
+		if (event.isCancelled())
+			return;
+		if (event.getItemDrop() == null)
+			return;
 		if (event.getItemDrop() instanceof CraftItem) {
-			if(((CraftItem)event.getItemDrop()).getItemStack() == null) return;
-			plugin.updateStat(event.getPlayer(), "itemdrop", plugin.getItems().getItem(((CraftItem)event.getItemDrop()).getItemStack().getTypeId()), 1);
+			if (((CraftItem) event.getItemDrop()).getItemStack() == null)
+				return;
+			plugin.updateStat(event.getPlayer(), "itemdrop", plugin.getItems().getItem(((CraftItem) event.getItemDrop()).getItemStack().getTypeId()), 1, false);
 		}
-			
+
 	}
 
 	/**
@@ -173,11 +177,11 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerKick(PlayerKickEvent event) {
 		if (event.isCancelled())
 			return;
-		plugin.updateStat(event.getPlayer(), "kick");
+		plugin.updateStat(event.getPlayer(), "kick", false);
 	}
 
 	/**
@@ -186,9 +190,9 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerRespawn(PlayerRespawnEvent event) {
-		plugin.updateStat(event.getPlayer(), "respawn");
+		plugin.updateStat(event.getPlayer(), "respawn", false);
 	}
 
 	/**
@@ -197,7 +201,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerLogin(PlayerLoginEvent event) {
 	}
 
@@ -207,12 +211,16 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerPickupItem(PlayerPickupItemEvent event) {
-    	if(event.getItem()==null) return;
+		if (event.isCancelled())
+			return;
+		if (event.getItem() == null)
+			return;
 		if (event.getItem() instanceof CraftItem) {
-			if(((CraftItem)event.getItem()).getItemStack() == null) return;
-			plugin.updateStat(event.getPlayer(), "itempickup", plugin.getItems().getItem(((CraftItem)event.getItem()).getItemStack().getTypeId()), 1);
+			if (((CraftItem) event.getItem()).getItemStack() == null)
+				return;
+			plugin.updateStat(event.getPlayer(), "itempickup", plugin.getItems().getItem(((CraftItem) event.getItem()).getItemStack().getTypeId()), 1, false);
 		}
 	}
 
@@ -222,7 +230,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onInventoryOpen(PlayerInventoryEvent event) {
 	}
 
@@ -232,7 +240,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onItemHeldChange(PlayerItemHeldEvent event) {
 	}
 
@@ -242,7 +250,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 * @param event
 	 *            Relevant event details
 	 */
-    @Override
+	@Override
 	public void onPlayerToggleSneak(PlayerToggleSneakEvent event) {
 	}
 }
