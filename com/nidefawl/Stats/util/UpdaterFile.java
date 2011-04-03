@@ -92,7 +92,8 @@ public class UpdaterFile {
 		if (remoteVersion > localVersion) {
 			if (autoUpdate) {
 				try {
-					Stats.LogInfo("Newer version found - Downloading file : " + remoteLocation);
+					Stats.LogInfo("Newer version of "+localLocation+" found. local: "+localVersion+" remote: "+remoteVersion);
+					Stats.LogInfo("Downloading file : " + remoteLocation);
 					URL url = new URL(remoteLocation);
 					File file = new File(localLocation);
 					file.mkdirs();
@@ -104,7 +105,7 @@ public class UpdaterFile {
 					saveTo(inputStream, outputStream);
 					inputStream.close();
 					outputStream.close();
-					Stats.LogInfo("  + Download complete");
+					Stats.LogInfo("Download complete. File saved to "+file.getAbsolutePath());
 					return true;
 				} catch (Exception e) {
 					Stats.LogInfo("Download failed: " + e.getMessage());

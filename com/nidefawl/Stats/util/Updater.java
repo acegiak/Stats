@@ -216,7 +216,7 @@ public class Updater {
 		updated |= (new UpdaterFile(UPDATE_SITE + "lib/sqlite.jar",plugPath+"lib/sqlite.jar",getCurrentSQLiteVersion(),SQLiteVersion)).update(true);
 		config.put("sqlite", String.valueOf(SQLiteVersion));
 		if (new File("plugins/Achievements.jar").exists()) {
-			updated |= (new UpdaterFile(UPDATE_SITE + "Achievements.jar","plugins/Achievements.jar",Achievements.version,AchievementsVersion)).update(autoUpdate);
+			updated |= (new UpdaterFile(UPDATE_SITE + "Achievements.jar","plugins/Achievements.jar",Achievements.getVersion(),AchievementsVersion)).update(autoUpdate);
 		}
 		updated |= (new UpdaterFile(UPDATE_SITE + "Stats.jar","plugins/Stats.jar",Stats.version,StatsVersion)).update(autoUpdate);
 		saveInternal();
