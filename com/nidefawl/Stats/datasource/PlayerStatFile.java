@@ -2,17 +2,11 @@ package com.nidefawl.Stats.datasource;
 
 import java.io.File;
 import java.util.Scanner;
-import java.util.logging.Logger;
-import java.util.logging.Level;
-
-import org.bukkit.ChatColor;
 
 import com.nidefawl.Stats.Stats;
 
 public class PlayerStatFile extends PlayerStat {
 	private String directory;
-	static final Logger log = Logger.getLogger("Minecraft");
-	public final String logprefix = ChatColor.YELLOW + "[Stats-" + Stats.version + "] " + ChatColor.WHITE;
 
 	PlayerStatFile(String name, String directory) {
 		super(name);
@@ -39,7 +33,7 @@ public class PlayerStatFile extends PlayerStat {
 					continue;
 				String[] split = line.split(":");
 				if (split.length != 3) {
-					log.log(Level.SEVERE, logprefix + " Malformed line (" + line + ") in " + location);
+					Stats.LogInfo("Malformed line (" + line + ") in " + location);
 					continue;
 				}
 				String category = split[0];
@@ -49,7 +43,7 @@ public class PlayerStatFile extends PlayerStat {
 				put(category, key, val);
 			}
 		} catch (Exception ex) {
-			log.log(Level.SEVERE, logprefix + " Exception while reading " + location, ex);
+			Stats.LogInfo("Exception while reading " + location + " " + ex);
 			return;
 		}
 	}

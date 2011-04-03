@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.logging.Logger;
-
 import org.bukkit.block.Block;
 import com.nidefawl.Stats.StatsSettings;
 
@@ -22,7 +21,7 @@ public abstract class PlayerStat {
 	Block lastFace = null;
 	public boolean unload = false;
 
-	PlayerStat(String name) {
+	public PlayerStat(String name) {
 		this.name = name;
 		this.categories = new HashMap<String, Category>();
 		int now = (int) (System.currentTimeMillis() / 1000L);

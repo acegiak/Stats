@@ -21,6 +21,7 @@ import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Vehicle;
 import org.bukkit.event.Event.Priority;
@@ -28,9 +29,10 @@ import org.bukkit.event.Event;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import com.nidefawl.Achievements.Achievements;
 import com.nidefawl.Stats.ItemResolver.hModItemResolver;
 import com.nidefawl.Stats.ItemResolver.itemResolver;
-import com.nidefawl.Stats.Permissions.GroupUserResolver;
+import com.nidefawl.Stats.Permissions.GroupManagerResolver;
 import com.nidefawl.Stats.Permissions.NijiPermissionsResolver;
 import com.nidefawl.Stats.Permissions.PermissionsResolver;
 import com.nidefawl.Stats.Permissions.defaultResolver;
@@ -38,23 +40,26 @@ import com.nidefawl.Stats.datasource.Category;
 import com.nidefawl.Stats.datasource.PlayerStat;
 import com.nidefawl.Stats.datasource.PlayerStatSQL;
 import com.nidefawl.Stats.datasource.StatsSQLConnectionManager;
+import com.nidefawl.Stats.udpates.Update1;
+import com.nidefawl.Stats.udpates.Update2;
 import com.nidefawl.Stats.util.Updater;
 
 public class Stats extends JavaPlugin {
 	public final static Logger log = Logger.getLogger("Minecraft");
-	public final static double version = 0.8;
+	public final static double version = 0.9D;
 	public final static String logprefix = "[Stats-" + version + "]";
 	public final static String defaultCategory = "stats";
 	public boolean enabled = false;
 	public boolean updated = false;
 	protected HashMap<String, PlayerStat> stats = new HashMap<String, PlayerStat>();
 	protected HashMap<String, Long> lastPlayerActivity = new HashMap<String, Long>();
-	protected itemResolver items = new hModItemResolver("items.txt");
+	protected itemResolver items = null;
 	private static PermissionsResolver perms = null;
 	private static StatsPlayerListener playerListener;
 	private static StatsVehicleListener vehicleListener;
 	private static StatsBlockListener blockListener;
 	private static StatsEntityListener entityListener;
+	private static StatsServerListener serverListener;
 	long lastDebugWrite = System.currentTimeMillis();
 	/**
 	 * LWC updater
@@ -69,13 +74,15 @@ public class Stats extends JavaPlugin {
 	public Updater getUpdater() {
 		return updater;
 	}
-
+	public PlayerStat getPlayerStat(String name) {
+		return stats.get(name);
+	}
 	public PermissionsResolver Perms() {
 		if (perms == null) {
-			log.info(logprefix + " Recreating Nijis Permissions for permissions");
+			LogInfo("Recreating PermissionsResolver");
 			CreatePermissionResolver();
 			if (perms == null)
-				log.log(Level.SEVERE, logprefix + " Couldn't link to Nijis Permissions plugin!!!");
+				LogError("Couldn't link PermissionsResolver!");
 		}
 		return perms;
 	}
@@ -83,7 +90,6 @@ public class Stats extends JavaPlugin {
 	public void ReloadPerms() {
 		if (perms != null) {
 			perms.reloadPerms();
-
 		}
 	}
 
@@ -102,18 +108,19 @@ public class Stats extends JavaPlugin {
 		ResultSet rs = null;
 		boolean result = false;
 		try {
-			conn = StatsSQLConnectionManager.getConnection();
+			conn = StatsSQLConnectionManager.getConnection(StatsSettings.useMySQL);
 			dbm = conn.getMetaData();
 			rs = dbm.getTables(null, null, StatsSettings.dbTable, null);
 			if (!rs.next()) {
 				ps = conn.prepareStatement("CREATE TABLE `" + StatsSettings.dbTable + "` (" + "`player` varchar(32) NOT NULL DEFAULT '-'," + "`category` varchar(32) NOT NULL DEFAULT 'stats'," + "`stat` varchar(32) NOT NULL DEFAULT '-'," + "`value` int(11) NOT NULL DEFAULT '0',"
 						+ "PRIMARY KEY (`player`,`category`,`stat`));");
 				ps.executeUpdate();
-				log.info(logprefix + " " + this.getClass().getName() + " created table '" + StatsSettings.dbTable + "'.");
+				LogInfo("created table '" + StatsSettings.dbTable + "'");
 			}
 			result = true;
 		} catch (SQLException ex) {
-			log.log(Level.SEVERE, logprefix + " " + this.getClass().getName() + " SQL exception", ex);
+			LogError("SQL exception" + ex);
+			ex.printStackTrace();
 			result = false;
 		} finally {
 			try {
@@ -124,14 +131,20 @@ public class Stats extends JavaPlugin {
 				if (conn != null)
 					conn.close();
 			} catch (SQLException ex) {
-				log.log(Level.SEVERE, logprefix + " " + this.getClass().getName() + " SQL exception on close", ex);
+				LogError("SQL exception (on close)" + ex);
+				ex.printStackTrace();
 				result = false;
 			}
 		}
 		return result;
 	}
 
-	public void setSavedStats(Player admin, String player, String category, String key, String value) {
+	//check if new items already added
+	//if not then write them to file and update stat-keys in database
+	private void update2() {
+		
+	}
+	public void setSavedStats(CommandSender sender, String player, String category, String key, String value) {
 		ArrayList<String> tounload = new ArrayList<String>();
 		tounload.addAll(stats.keySet());
 		for (String name : tounload) {
@@ -144,7 +157,7 @@ public class Stats extends JavaPlugin {
 		PreparedStatement ps = null;
 		ResultSet rs = null;
 		try {
-			conn = StatsSQLConnectionManager.getConnection();
+			conn = StatsSQLConnectionManager.getConnection(StatsSettings.useMySQL);
 			StringBuilder statement = new StringBuilder();
 			int conditions = 0;
 			statement.append("UPDATE " + StatsSettings.dbTable + " set value = ?");
@@ -166,8 +179,9 @@ public class Stats extends JavaPlugin {
 				ps.setString(conditions--, player);
 			result = ps.executeUpdate();
 		} catch (SQLException ex) {
-			log.log(Level.SEVERE, logprefix + " " + this.getClass().getName() + " SQL exception", ex);
-			Messaging.send(admin, StatsSettings.premessage + ex.getMessage());
+			LogError("SQL exception" + ex);
+			ex.printStackTrace();
+			sender.sendMessage(StatsSettings.premessage + ex.getMessage());
 		} finally {
 			try {
 				if (rs != null)
@@ -177,11 +191,12 @@ public class Stats extends JavaPlugin {
 				if (conn != null)
 					conn.close();
 			} catch (SQLException ex) {
-				log.log(Level.SEVERE, logprefix + " " + this.getClass().getName() + " SQL exception on close", ex);
-				Messaging.send(admin, StatsSettings.premessage + ex.getMessage());
+				LogError("SQL exception (on close)" + ex);
+				ex.printStackTrace();
+				sender.sendMessage(StatsSettings.premessage + ex.getMessage());
 			}
 		}
-		Messaging.send(admin, StatsSettings.premessage + "Updated " + result + " stats.");
+		sender.sendMessage(StatsSettings.premessage + "Updated " + result + " stats.");
 		for (Player p : getServer().getOnlinePlayers()) {
 			load(p);
 		}
@@ -224,112 +239,118 @@ public class Stats extends JavaPlugin {
 	}
 
 	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args) {
-		if (!(sender instanceof Player))
-			return false;
-		Player player = (Player) sender;
-		if (commandLabel.equals("played") && Perms().permission(player, "/stats")) {
-			int playedFor = get(player.getName(), "stats", "playedfor");
-			if (playedFor == 0) {
-				Messaging.send(player, StatsSettings.premessage + "No Playedtime yet!");
+		if (sender instanceof Player) {
+			Player player = (Player) sender;
+			if (commandLabel.equals("played") && Perms().permission(player, "stats.view.playtime")) {
+				int playedFor = get(player.getName(), "stats", "playedfor");
+				if (playedFor == 0) {
+					Messaging.send(player, StatsSettings.premessage + "No Playedtime yet!");
+					return true;
+				}
+				Messaging.send(player, StatsSettings.premessage + "You played for "+ChatColor.WHITE + GetTimeString(playedFor));
 				return true;
-			}
-			Messaging.send(player, StatsSettings.premessage + "You played for &f" + GetTimeString(playedFor));
-			return true;
+			} 
 		}
-		if (commandLabel.equals("stats") && Perms().permission(player, "/stats")) {
-			if (args.length == 1 && args[0].equalsIgnoreCase("help")) {
-				Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "/stats - Shows your stats summary");
-				Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "/stats <player> - Shows players stats summary");
-				if (Perms().permission(player, "/statsadmin")) {
-					Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "/stats list - Shows loaded players");
-					Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "/stats set - Set stats manually");
-					Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "/stats debug - Prints stat-update messages to console.");
-					Messaging.send(player, StatsSettings.premessage + "Usage: " + ChatColor.WHITE + "/stats [category|debug|statname|list|helpset]");
-					Messaging.send(player, StatsSettings.premessage + "or /stats [player] [category|statname]");
+		if (commandLabel.equals("stats")) {
+			if (args.length == 1 && args[0].equalsIgnoreCase("help") || ((sender instanceof ConsoleCommandSender) && args.length == 0)) {
+				if ((sender instanceof Player) && Perms().permission(sender, "stats.view.playtime")) {
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "/played - Shows your play-time");
+				}
+				if ((sender instanceof Player) && Perms().permission(sender, "stats.view.own")) {
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "/stats - Shows your stats summary");
+				}
+				if(Perms().permission(sender, "stats.view.others"))  {
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "/stats <player> - Shows players stats summary");
+				}
+				if (Perms().permission(sender, "stats.admin")) {
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "/stats list - Shows loaded players");
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "/stats set <player> <cat> <stat> <val> - Set stats manually");
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "/stats debug - Prints stat-update messages to console.");
+					sender.sendMessage(StatsSettings.premessage + "Usage: " + ChatColor.WHITE + "/stats [category|debug|statname|list|helpset]");
+					sender.sendMessage(StatsSettings.premessage + "or /stats [player] [category|statname]");
 				} else {
-					Messaging.send(player, StatsSettings.premessage + "Usage: " + ChatColor.WHITE + "/stats [category|statname|help] or /stats [player] [category|statname]");
+					sender.sendMessage(StatsSettings.premessage + "Usage: " + ChatColor.WHITE + "/stats [category|statname|help] or /stats [player] [category|statname]");
 				}
 				return true;
 			}
-			if (Perms().permission(player, "/statsadmin")) {
-				if (args.length == 1 && args[0].equalsIgnoreCase("list") && Perms().permission(player, "/statsadmin")) {
-					Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "Loaded playerstats (" + stats.size() + "): " + StatsPlayerList());
-					return true;
-				}
-				if (args.length == 1 && args[0].equalsIgnoreCase("entlist")) {
-					entityListener.sendEntList(player);
-					return true;
-				}
-				if (args.length > 0 && args[0].equalsIgnoreCase("set")) {
-					if (args.length < 5) {
-						Messaging.send(player, StatsSettings.premessage + ChatColor.RED + "Need more arguments (use * to select all)");
-						Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "/stats set [player] [category] [key] [value]- Set stats manually");
-						return true;
-					}
-					try {
-						Integer.valueOf(args[4]);
-					} catch (Exception e) {
-						Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "[value] should be a number (" + args[4] + " is not)!");
-						return true;
-					}
-					setSavedStats(player, args[1], args[2], args[3], args[4]);
-					return true;
-				}
-				if (args.length == 1 && args[0].equalsIgnoreCase("debug")) {
-					StatsSettings.debugOutput = !StatsSettings.debugOutput;
-					Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "Debugging " + (StatsSettings.debugOutput ? "enabled. Check server log." : "disabled."));
-					return true;
-
-				}
-				if (args.length == 1 && args[0].equalsIgnoreCase("disable")) {
-					enabled = false;
-					Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "Debugging: Stats is now disabled.");
-					return true;
-
-				}
-				if (args.length == 1 && args[0].equalsIgnoreCase("enable")) {
-					enabled = true;
-					Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "Debugging: Stats is now enabled.");
-					return true;
-
-				}
+			else if (args.length == 1 && args[0].equalsIgnoreCase("list") && Perms().permission(sender, "stats.admin")) {
+				sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "Loaded playerstats (" + stats.size() + "): " + StatsPlayerList());
+				return true;
 			}
-			Player who = player;
-			if (args.length > 0) {
-				int offs = 1;
+			else if (args.length > 0 && args[0].equalsIgnoreCase("set") && Perms().permission(sender, "stats.admin")) {
+				if (args.length < 5) {
+					sender.sendMessage(StatsSettings.premessage + ChatColor.RED + "Need more arguments (use * to select all)");
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "/stats set [player] [category] [key] [value]- Set stats manually");
+					return true;
+				}
+				try {
+					Integer.valueOf(args[4]);
+				} catch (Exception e) {
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "[value] should be a number (" + args[4] + " is not)!");
+					return true;
+				}
+				setSavedStats(sender, args[1], args[2], args[3], args[4]);
+				return true;
+			}
+			else if (args.length == 1 && args[0].equalsIgnoreCase("debug") && Perms().permission(sender, "stats.admin")) {
+				StatsSettings.debugOutput = !StatsSettings.debugOutput;
+				sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "Debugging " + (StatsSettings.debugOutput ? "enabled. Check server log." : "disabled."));
+				return true;
+			}
+			if(!Perms().permission(sender, "stats.view.own")) {
+				sender.sendMessage(ChatColor.RED + "You don't have permission to view your stats!");
+				return true;
+			}
+			Player who = null;
+			if(sender instanceof Player) {
+				who = (Player)sender;
+			}
+			int offs = 0;
+			if(args.length>0) {
 				who = playerMatch(args[0]);
-				if (who == null) {
-					who = player;
-					offs--;
-				}
-				if (args.length == offs + 1) {
-					if (isStat(player.getName(), args[offs])) {
-						printStat(player, who, "stats", args[offs]);
-						return true;
-					} else if (getItems().getItem(args[offs]) != 0 && !(args[offs].equals("boat") || args[offs].equals("minecart"))) {
-						printStat(player, who, "blockcreate", args[offs]);
-						printStat(player, who, "blockdestroy", args[offs]);
-						return true;
-					} else if (isCat(player.getName(), args[offs])) {
-						Messaging.send(player, StatsSettings.premessage + "Please choose: (/stats " + args[offs] + " <stat-name>)");
-						Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + getCatEntries(who.getName(), args[offs]));
-						return true;
-					} else {
-						Messaging.send(player, StatsSettings.premessage + ChatColor.RED + "stat/category '" + args[offs] + "' not found. Possible values:");
-						Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + getCats(who.getName()));
+				if(who!=null) {
+					if(!Perms().permission(sender, "stats.view.others")) {
+						sender.sendMessage(ChatColor.RED + "You don't have permission to view others stats!");
 						return true;
 					}
-				} else if (args.length == offs + 2) {
-					if (isCat(player.getName(), args[offs])) {
-						printStat(player, who, args[offs], args[offs + 1]);
-						return true;
+					offs++;
+				} else {
+					if ((sender instanceof ConsoleCommandSender)) {
+						sender.sendMessage(ChatColor.RED + "Player '"+args[0]+"' is not online!");
+						return false;
 					} else {
-						Messaging.send(player, StatsSettings.premessage + ChatColor.RED + "stat/category '" + args[offs] + "' not found. Possible values:");
-						Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + getCats(who.getName()));
-						return true;
+						who = (Player)sender;
 					}
 				}
 			}
+			if (args.length == offs + 1) {
+				if (isStat(who.getName(), args[offs])) {
+					printStat(sender, who, "stats", args[offs]);
+					return true;
+				} else if (getItems().getItem(args[offs]) != 0 && !(args[offs].equals("boat") || args[offs].equals("minecart"))) {
+					printStat(sender, who, "blockcreate", args[offs]);
+					printStat(sender, who, "blockdestroy", args[offs]);
+					return true;
+				} else if (isCat(who.getName(), args[offs])) {
+					sender.sendMessage(StatsSettings.premessage + "Please choose: (/stats " + args[offs] + " <stat-name>)");
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + getCatEntries(who.getName(), args[offs]));
+					return true;
+				} else {
+					sender.sendMessage(StatsSettings.premessage + ChatColor.RED + "stat/category '" + args[offs] + "' not found. Possible values:");
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + getCats(who.getName()));
+					return true;
+				}
+			} else if (args.length == offs + 2) {
+				if (isCat(who.getName(), args[offs])) {
+					printStat(sender, who, args[offs], args[offs + 1]);
+					return true;
+				} else {
+					sender.sendMessage(StatsSettings.premessage + ChatColor.RED + "stat/category '" + args[offs] + "' not found. Possible values:");
+					sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + getCats(who.getName()));
+					return true;
+				}
+			} 
+			
 			int playedTime = get(who.getName(), "stats", "playedfor");
 			int movedBlocks = get(who.getName(), "stats", "move");
 			int totalCreate = get(who.getName(), "stats", "totalblockcreate");
@@ -341,52 +362,51 @@ public class Stats extends JavaPlugin {
 			int totalDamage = get(who.getName(), "damagetaken", "total");
 			int totalDamageDealt = get(who.getName(), "damagedealt", "total");
 			try {
-				Messaging.send(player, "------------------------------------------------");
-				Messaging.send(player, "&e stats for &f" + who.getName() + "&e: (&f/stats help for more&e)");
-				Messaging.send(player, "------------------------------------------------");
-				String s1 = "&6 [&ePlayedtime&6]";
-				while (MinecraftFontWidthCalculator.getStringWidth(s1) < 110)
+				sender.sendMessage("------------------------------------------------");
+				sender.sendMessage(ChatColor.GOLD + " stats for " + ChatColor.WHITE + who.getName() + ChatColor.GOLD + ": (" + ChatColor.WHITE + "/stats help for more" + ChatColor.GOLD + ")");
+				sender.sendMessage("------------------------------------------------");
+				String s1 = ChatColor.GOLD + "[" + ChatColor.YELLOW + "Playedtime" + ChatColor.GOLD + "]" + ChatColor.YELLOW;
+				while (MinecraftFontWidthCalculator.getStringWidth(sender,s1) < 120)
 					s1 += " ";
-				s1 += "&f" + GetTimeString(playedTime);
-				Messaging.send(player, s1);
-				s1 = "&6 [&eMoved&6]";
-				while (MinecraftFontWidthCalculator.getStringWidth(s1) < 110)
+				s1 += ChatColor.WHITE + GetTimeString(playedTime);
+				sender.sendMessage(s1);
+				s1 = ChatColor.GOLD + "[" + ChatColor.YELLOW + "Moved" + ChatColor.GOLD + "]" + ChatColor.YELLOW;
+				while (MinecraftFontWidthCalculator.getStringWidth(sender,s1) < 120)
 					s1 += " ";
-				s1 += "&f" + movedBlocks + " blocks";
-				Messaging.send(player, s1);
-				printStatFormated(player, "Blocks", "created", totalCreate, "destroyed", totalDestroy);
-				printStatFormated(player, "Deaths", "total", tdeaths, "player", pdeaths);
-				printStatFormated(player, "Kills", "total", tkills, "player", pkills);
-				printStatFormated(player, "Damage", "dealt", totalDamageDealt, "taken", totalDamage);
-				Messaging.send(player, "------------------------------------------------");
+				s1 += ChatColor.WHITE + String.valueOf(movedBlocks) + " blocks";
+				sender.sendMessage(s1);
+				printStatFormatted(sender, "Blocks", "created", totalCreate, "destroyed", totalDestroy);
+				printStatFormatted(sender, "Deaths", "total", tdeaths, "player", pdeaths);
+				printStatFormatted(sender, "Kills", "total", tkills, "player", pkills);
+				printStatFormatted(sender, "Damage", "dealt", totalDamageDealt, "taken", totalDamage);
+				sender.sendMessage("------------------------------------------------");
 			} catch (Exception e) {
 				// TODO: handle exception
 			}
 			return true;
-
 		}
 
 		return false;
 	}
 
-	private void printStatFormated(Player p, String name, String title1, int value1, String title2, int value2) {
-		String s1 = "&6 [&e" + name + "&6]&e";
-		while (MinecraftFontWidthCalculator.getStringWidth(s1) < 120)
+	private void printStatFormatted(CommandSender sender, String name, String title1, int value1, String title2, int value2) {
+		String s1 = ChatColor.GOLD + "[" + ChatColor.YELLOW + name + ChatColor.GOLD + "]" + ChatColor.YELLOW;
+		while (MinecraftFontWidthCalculator.getStringWidth(sender,s1) < 120)
 			s1 += " ";
 		if (title2 != null)
-			s1 += "&f" + title1 + "/" + title2;
+			s1 += ChatColor.WHITE + title1 + "/" + title2;
 		else
-			s1 += "&f" + title1;
-		while (MinecraftFontWidthCalculator.getStringWidth(s1) < 240)
+			s1 += ChatColor.WHITE + title1;
+		while (MinecraftFontWidthCalculator.getStringWidth(sender,s1) < 240)
 			s1 += " ";
 		if (title2 != null)
 			s1 += value1 + "/" + value2;
 		else
 			s1 += value1;
-		Messaging.send(p, s1);
+		sender.sendMessage(s1);
 	}
 
-	public void printStat(Player sendTo, Player statPlayer, String cat, String stat) {
+	public void printStat(CommandSender sendTo, Player statPlayer, String cat, String stat) {
 		long statVal = get(statPlayer.getName(), cat, stat);
 		String statString = "" + statVal;
 		if (stat.equalsIgnoreCase("playedfor")) {
@@ -398,7 +418,7 @@ public class Stats extends JavaPlugin {
 			statString = format.format(logDate);
 		}
 
-		Messaging.send(sendTo, StatsSettings.premessage + cat + "/" + stat + ": &f" + statString);
+		sendTo.sendMessage(StatsSettings.premessage + cat + "/" + stat + ": " + ChatColor.WHITE + statString);
 	}
 
 	public String GetTimeString(int Seconds) {
@@ -411,19 +431,21 @@ public class Stats extends JavaPlugin {
 	}
 
 	public void CreatePermissionResolver() {
-		Plugin permPlugin = this.getServer().getPluginManager().getPlugin("Permissions");
+
+		Plugin permPlugin = this.getServer().getPluginManager().getPlugin("GroupManager");
+		if (permPlugin != null) {
+			log.info(logprefix + " Using GroupManager for permissions");
+			perms = new GroupManagerResolver(this);
+			return;
+		}
+		permPlugin = this.getServer().getPluginManager().getPlugin("Permissions");
 		if (permPlugin != null) {
 			log.info(logprefix + " Using Nijis Permissions for permissions");
 			perms = new NijiPermissionsResolver(this);
 			return;
 		}
-		permPlugin = this.getServer().getPluginManager().getPlugin("GroupUsers");
-		if (permPlugin != null) {
-			log.info(logprefix + " Using GroupUsers for permissions");
-			perms = new GroupUserResolver(this);
-			return;
-		}
-		log.info(logprefix + " Using bukkit's isOp() for permissions");
+
+		log.info(logprefix + " Using bukkit's isOp() for permissions (until other plugin is enabled)");
 		perms = new defaultResolver();
 		return;
 	}
@@ -447,19 +469,19 @@ public class Stats extends JavaPlugin {
 		list += " ";
 		return list;
 	}
+	protected final FilenameFilter filter = new FilenameFilter() {
+		public boolean accept(File dir, String name) {
+			if(name.equals("items.txt")) return false;
+			return name.endsWith(".txt");
+		}
+	};
 
+	protected final FilenameFilter filterOld = new FilenameFilter() {
+		public boolean accept(File dir, String name) {
+			return name.endsWith(".txt.old");
+		}
+	};
 	public void convertFlatFiles() {
-		FilenameFilter filter = new FilenameFilter() {
-			public boolean accept(File dir, String name) {
-				return name.endsWith(".txt");
-			}
-		};
-
-		FilenameFilter filterOld = new FilenameFilter() {
-			public boolean accept(File dir, String name) {
-				return name.endsWith(".txt.old");
-			}
-		};
 		String[] files = getDataFolder().list(filterOld);
 		if (files != null && files.length > 0) {
 			for (int i = 0; i < files.length; i++) {
@@ -486,7 +508,9 @@ public class Stats extends JavaPlugin {
 			ps.save();
 			count++;
 		}
-		Stats.LogInfo("Converted " + count + " stat files to " + (StatsSettings.useMySQL ? "MySQL" : "SQLite"));
+		if(count > 0) {
+			Stats.LogInfo("Converted " + count + " stat files to " + (StatsSettings.useMySQL ? "MySQL" : "SQLite"));
+		}
 	}
 
 	public Stats() {
@@ -512,25 +536,16 @@ public class Stats extends JavaPlugin {
 		}
 		StatsSettings.load(this);
 		updater = new Updater(this);
-		System.setProperty("org.sqlite.lib.path", updater.getOSSpecificFolder());
 		try {
-			if (StatsSettings.autoUpdate) {
-
-				updated = updater.checkDist();
-				updated |= updater.checkAchDist();
-				if (updated) {
-					LogInfo("UPDATE INSTALLED. PLEASE RESTART....");
-					return;
-				}
-
-			} else {
-				updater.check();
+			updated = updater.updateDist(StatsSettings.autoUpdate);
+			if (updated) {
+				LogInfo("UPDATE INSTALLED. PLEASE RESTART....");
+				return;
 			}
-			updater.update();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		Connection conn = StatsSQLConnectionManager.getConnection();
+		Connection conn = StatsSQLConnectionManager.getConnection(StatsSettings.useMySQL);
 		try {
 			if (conn == null || conn.isClosed()) {
 				LogError("Could not establish SQL connection. Disabling Stats");
@@ -551,6 +566,10 @@ public class Stats extends JavaPlugin {
 		convertFlatFiles();
 		if (updated)
 			return;
+		Update1.execute(this);
+		Update2.execute(this);
+		items = new hModItemResolver(new File(getDataFolder(),"items.txt"));
+		update2();
 		stats = new HashMap<String, PlayerStat>();
 		CreatePermissionResolver();
 		enabled = true;
@@ -558,12 +577,12 @@ public class Stats extends JavaPlugin {
 		blockListener = new StatsBlockListener(this);
 		entityListener = new StatsEntityListener(this);
 		vehicleListener = new StatsVehicleListener(this);
+		serverListener = new StatsServerListener(this);
 		initialize();
 		LogInfo("Plugin Enabled");
 		for (Player p : getServer().getOnlinePlayers()) {
 			load(p);
 		}
-
 		getServer().getScheduler().scheduleSyncRepeatingTask(this, new SaveTask(this), StatsSettings.delay * 20, StatsSettings.delay * 20);
 	}
 
@@ -575,10 +594,10 @@ public class Stats extends JavaPlugin {
 		return null;
 	}
 
-	private static class SaveTask implements Runnable {
+	public static class SaveTask implements Runnable {
 		private Stats statsInstance;
 
-		SaveTask(Stats plugin) {
+		public SaveTask(Stats plugin) {
 			statsInstance = plugin;
 		}
 
@@ -593,13 +612,20 @@ public class Stats extends JavaPlugin {
 	public void onDisable() {
 		if (enabled) {
 			saveAll();
+			Plugin achPlugin = getServer().getPluginManager().getPlugin("Achievements");
+			if (achPlugin != null && achPlugin.isEnabled()) {
+				if (((Achievements) achPlugin).enabled) {
+					((Achievements) achPlugin).checkAchievements();
+					((Achievements) achPlugin).Disable();
+				}
+			}
 			enabled = false;
 			getServer().getScheduler().cancelTasks(this);
 			stats = null;
 			updater.saveInternal();
-			StatsSQLConnectionManager.closeConnection();
+			StatsSQLConnectionManager.closeConnection(StatsSettings.useMySQL);
 		}
-		log.info(logprefix + " " + version + " Plugin Disabled");
+		LogInfo("Plugin Disabled");
 	}
 
 	public void initialize() {
@@ -610,19 +636,19 @@ public class Stats extends JavaPlugin {
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_MOVE, playerListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_ANIMATION, playerListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_TELEPORT, playerListener, Priority.Monitor, this);
-		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_ITEM, playerListener, Priority.Monitor, this);
+		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_INTERACT, playerListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_DROP_ITEM, playerListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_PICKUP_ITEM, playerListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.PLAYER_RESPAWN, playerListener, Priority.Monitor, this);
-		getServer().getPluginManager().registerEvent(Event.Type.BLOCK_PLACED, blockListener, Priority.Monitor, this);
-		getServer().getPluginManager().registerEvent(Event.Type.BLOCK_RIGHTCLICKED, blockListener, Priority.Monitor, this);
-		getServer().getPluginManager().registerEvent(Event.Type.BLOCK_INTERACT, blockListener, Priority.Monitor, this);
+		getServer().getPluginManager().registerEvent(Event.Type.BLOCK_PLACE, blockListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.BLOCK_IGNITE, blockListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.BLOCK_BREAK, blockListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.ENTITY_DEATH, entityListener, Priority.Lowest, this);
-		getServer().getPluginManager().registerEvent(Event.Type.ENTITY_DAMAGED, entityListener, Priority.Monitor, this);
+		getServer().getPluginManager().registerEvent(Event.Type.ENTITY_DAMAGE, entityListener, Priority.Highest, this);
 		getServer().getPluginManager().registerEvent(Event.Type.VEHICLE_ENTER, vehicleListener, Priority.Monitor, this);
 		getServer().getPluginManager().registerEvent(Event.Type.VEHICLE_MOVE, vehicleListener, Priority.Monitor, this);
+		getServer().getPluginManager().registerEvent(Event.Type.PLUGIN_DISABLE, serverListener, Priority.Normal, this);
+		getServer().getPluginManager().registerEvent(Event.Type.PLUGIN_ENABLE, serverListener, Priority.Normal, this);
 	}
 
 	public void updateStat(Player player, String statType, boolean resetAfkTimer) {
@@ -652,7 +678,7 @@ public class Stats extends JavaPlugin {
 		if (!enabled)
 			return;
 		if (player == null || player.length() < 1) {
-			log.log(Level.SEVERE, logprefix + " updateStat got empty player for [" + category + "] [" + key + "] [" + val + "]");
+			LogError("updateStat got empty player for [" + category + "] [" + key + "] [" + val + "]");
 			return;
 		}
 
@@ -691,11 +717,11 @@ public class Stats extends JavaPlugin {
 
 	}
 
-	protected void updateMove(String player, Location from, Location to) {
+	public void updateMove(String player, Location from, Location to) {
 		if (!enabled)
 			return;
 		if (player == null || player.length() < 1) {
-			log.log(Level.SEVERE, logprefix + " updateMove got empty player for " + player);
+			LogError("updateMove got empty player for " + player);
 			return;
 		}
 		PlayerStat ps = stats.get(player);
@@ -705,11 +731,11 @@ public class Stats extends JavaPlugin {
 
 	}
 
-	protected void updateVehicleMove(String player, Vehicle vhc, Location from, Location to) {
+	public void updateVehicleMove(String player, Vehicle vhc, Location from, Location to) {
 		if (!enabled)
 			return;
 		if (player == null || player.length() < 1) {
-			log.log(Level.SEVERE, logprefix + " updateVehicleMove got empty player for " + player);
+			LogError("updateVehicleMove got empty player for " + player);
 			return;
 		}
 		PlayerStat ps = stats.get(player);
@@ -802,14 +828,14 @@ public class Stats extends JavaPlugin {
 		return cat.get(key);
 	}
 
-	protected void load(Player player) {
-		if (!Perms().permission(player, "/stats")) {
+	public void load(Player player) {
+		if (!Perms().permission(player, "stats.log")) {
 			if (StatsSettings.debugOutput)
-				log.info(logprefix + " player " + player.getName() + " has no /stats permission. Not loading/logging actions");
+				LogInfo("player " + player.getName() + " has no stats.log permission. Not loading/logging actions");
 			return;
 		}
 		if (stats.containsKey(player.getName())) {
-			log.log(Level.SEVERE, logprefix + " attempting to load already loaded player: " + player.getName());
+			LogError("attempting to load already loaded player: " + player.getName());
 			return;
 		}
 		PlayerStat ps = new PlayerStatSQL(player.getName(), this);
@@ -817,10 +843,10 @@ public class Stats extends JavaPlugin {
 		ps.skipTeleports = 2;
 		stats.put(player.getName(), ps);
 		if (StatsSettings.debugOutput)
-			log.info(logprefix + " player " + player.getName() + " has been loaded.");
+			LogInfo("player " + player.getName() + " has been loaded.");
 	}
 
-	protected void unload(String player) {
+	public void unload(String player) {
 		entityListener.UnloadPlayer(player);
 		if (stats.containsKey(player)) {
 			PlayerStat ps = stats.get(player);
@@ -836,11 +862,11 @@ public class Stats extends JavaPlugin {
 		return stats.get(p.getName()).isAfk();
 	}
 
-	private synchronized void saveAll() {
+	public void saveAll() {
 		if (StatsSettings.debugOutput)
 			log.info("Stats debug: saving " + stats.size() + " players stats");
 		try {
-			Connection conn = StatsSQLConnectionManager.getConnection();
+			Connection conn = StatsSQLConnectionManager.getConnection(StatsSettings.useMySQL);
 			if (conn == null)
 				return;
 			conn.setAutoCommit(false);
@@ -859,11 +885,11 @@ public class Stats extends JavaPlugin {
 			}
 			stat.save(false);
 		}
-		StatsSQLConnectionManager.closeConnection();
+		StatsSQLConnectionManager.closeConnection(StatsSettings.useMySQL);
 		for (PlayerStat stat : stats.values()) {
 			if (!stat.unload)
 				continue;
-			log.log(Level.SEVERE, logprefix + " " + " onDisconnect did not happen, logging out+ unloading " + stat.getName() + " now");
+			LogError("onPlayerQuit did not happen, unloading " + stat.getName() + " now");
 			logout(stat.getName());
 			unload(stat.getName());
 		}
@@ -874,9 +900,6 @@ public class Stats extends JavaPlugin {
 	}
 
 	public itemResolver getItems() {
-		if (items == null) {
-			setItems(new hModItemResolver("items.txt"));
-		}
 		return items;
 	}
 
@@ -898,7 +921,7 @@ public class Stats extends JavaPlugin {
 		if (!enabled)
 			return;
 		if (player == null || player.length() < 1) {
-			log.log(Level.SEVERE, logprefix + " updateVehicleEnter got empty player for " + player);
+			LogError("updateVehicleEnter got empty player for " + player);
 			return;
 		}
 		PlayerStat ps = stats.get(player);
@@ -921,8 +944,13 @@ public class Stats extends JavaPlugin {
 	}
 
 	public void onLoad() {
-		// TODO Auto-generated method stub
 
+	}
+	/**
+	 * @param perms the perms to set
+	 */
+	public static void setPerms(PermissionsResolver perms) {
+		Stats.perms = perms;
 	}
 
 }

@@ -3,7 +3,6 @@ package com.nidefawl.Stats;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import org.bukkit.ChatColor;
 import org.bukkit.craftbukkit.entity.CraftItem;
 import org.bukkit.entity.*;
 import org.bukkit.event.entity.*;
@@ -28,7 +27,7 @@ public class StatsEntityListener extends EntityListener {
 		ArrayList<Entity> removeThat = new ArrayList<Entity>();
 		for (Entity ee : entsKilledByEnt.keySet()) { // cycle through Ents that
 														// dealt damage
-
+			
 			if (ee == null)
 				continue;
 
@@ -46,7 +45,7 @@ public class StatsEntityListener extends EntityListener {
 					break;
 				}
 			}
-			if (res != null) {
+			if(res!=null) {
 				if (setNull) {
 					entsKilledByEnt.get(res).remove(entity);
 					if (entsKilledByEnt.get(res).size() == 0)
@@ -118,27 +117,25 @@ public class StatsEntityListener extends EntityListener {
 			entsKilledByEnt.put(damager, ents);
 		}
 	}
-
 	public String getNiceDamageString(String cause) {
-		if (cause.equals("fire"))
+		if(cause.equals("fire")) 
 			return "burned to death";
-		if (cause.equals("fall"))
+		if(cause.equals("fall")) 
 			return "died by falling down a cliff";
-		if (cause.equals("drowning"))
+		if(cause.equals("drowning")) 
 			return "died by drowning";
-		if (cause.equals("entityexplosion") || cause.equals("explosion"))
+		if(cause.equals("entityexplosion")||cause.equals("explosion")) 
 			return "was hit by an explosion";
-		if (cause.equals("lava"))
+		if(cause.equals("lava")) 
 			return "had a bath in lava";
-		if (cause.equals("suffocation"))
+		if(cause.equals("suffocation")) 
 			return "suffocated";
-		if (cause.equals("entityattack"))
+		if(cause.equals("entityattack"))
 			return "was hunt down by some creature";
-		if (cause.equals("unknown"))
+		if(cause.equals("unknown"))
 			return "was killed by Herobrine";
-		return "was killed by " + cause.toLowerCase();
+		return "was killed by "+cause.toLowerCase();
 	}
-
 	private void checkOtherDamage(EntityDamageEvent event) {
 		if (event.getEntity() instanceof Player) {
 			String cause = "unknown";
@@ -178,21 +175,20 @@ public class StatsEntityListener extends EntityListener {
 			default:
 				cause = "unknown";
 			}
-			plugin.updateStat((Player) event.getEntity(), "damagetaken", cause, event.getDamage(), false);
-			plugin.updateStat((Player) event.getEntity(), "damagetaken", "total", event.getDamage(), false);
-			if (event.getDamage() >= ((Player) event.getEntity()).getHealth() && plugin.stats.keySet().contains(((Player) event.getEntity()).getName())) {
+			plugin.updateStat((Player) event.getEntity(), "damagetaken", cause, event.getDamage(),false);
+			plugin.updateStat((Player) event.getEntity(), "damagetaken", "total", event.getDamage(),false);
+			if (event.getDamage() >= ((Player) event.getEntity()).getHealth() && plugin.getPlayerStat(((Player) event.getEntity()).getName())!=null) {
 				otherDeathCauses.put((Player) event.getEntity(), cause);
 			}
 
 		}
 
 	}
-
-	public void sendEntList(Player player) {
+	/*public void sendEntList(CommandSender sender) {
 		int LoadedEnts = 0;
 		int nullEnts = 0;
 		for (Entity e : entsKilledByEnt.keySet()) {
-			if (e == null) { // WONDER IF THIS HAPPENS
+			if (e == null) { 
 				nullEnts++;
 				continue;
 			}
@@ -206,36 +202,35 @@ public class StatsEntityListener extends EntityListener {
 				if (ee instanceof Player)
 					entsList += ((Player) ee).getName() + ", ";
 				else
-					entsList += StatsEntityListener.EntToString(ee) + " (" + ee.getEntityId() + "," + ((LivingEntity) ee).getHealth() + "), ";
+					entsList += StatsEntityListener.EntToString(ee) + " (" + ee.getEntityId() + ","+((LivingEntity)ee).getHealth()+"), ";
 
 			}
 			if (entsList.length() > 2)
 				entsList.substring(0, entsList.length() - 2);
-			Messaging.send(player, "killed entitys for: " + entName + "(" + e.getEntityId() + "): " + entsList);
+			sender.sendMessage("killed entitys for: " + entName + "(" + e.getEntityId() + "): " + entsList);
 			LoadedEnts++;
 			LoadedEnts += entsKilledByEnt.get(e).size();
 		}
-		Messaging.send(player, StatsSettings.premessage + ChatColor.WHITE + "Total chached ents: " + LoadedEnts + ", Nulls: " + nullEnts);
+		sender.sendMessage(StatsSettings.premessage + ChatColor.WHITE + "Total chached ents: " + LoadedEnts + ", Nulls: " + nullEnts);
 
-	}
+	}*/
 
 	private boolean checkEntDamage(Entity entity, Entity damager, int amount) {
-
 		if (!(damager instanceof Player) && !(entity instanceof Player)) {
 			return true;
 		}
 		String typeName = null;
 		if ((damager instanceof Player) && (entity instanceof Player)) {
 			typeName = "Player";
-			if (((LivingEntity) entity).getHealth() > 0) {
-				StatsPlayerDamagedPlayerEvent damageevent = new StatsPlayerDamagedPlayerEvent((Player) damager, (Player) entity, amount);
+			if(((LivingEntity) entity).getHealth()>0 ) {
+				StatsPlayerDamagedPlayerEvent damageevent = new StatsPlayerDamagedPlayerEvent((Player)damager,(Player)entity,amount);
 				plugin.getServer().getPluginManager().callEvent(damageevent);
-				if (damageevent.isCancelled()) {
+				if(damageevent.isCancelled()) {
 					return false;
 				}
-				plugin.updateStat((Player) damager, "damagedealt", typeName, amount, false);
-				plugin.updateStat((Player) entity, "damagetaken", typeName, amount, false);
-				if (amount >= ((LivingEntity) entity).getHealth() && plugin.stats.keySet().contains(((Player) damager).getName())) {
+				plugin.updateStat((Player) damager, "damagedealt", typeName, amount,false);
+				plugin.updateStat((Player) entity, "damagetaken", typeName, amount,false);
+				if (amount >= ((LivingEntity) entity).getHealth() && plugin.getPlayerStat(((Player) damager).getName())!=null) {
 					if (getEntFromEnt(entity, false) == null)
 						saveEntToEnt(damager, entity);
 				}
@@ -245,27 +240,26 @@ public class StatsEntityListener extends EntityListener {
 		if (damager instanceof Player) {
 			typeName = EntToString(entity);
 			if (!(entity instanceof LivingEntity)) {
-				plugin.updateStat((Player) damager, "damagedealt", typeName, amount, false);
-				plugin.updateStat((Player) damager, "damagedealt", "total", amount, false);
+				plugin.updateStat((Player) damager, "damagedealt", typeName, amount,false);
+				plugin.updateStat((Player) damager, "damagedealt", "total", amount,false);
 				return true;
 			} else {
 				if (((LivingEntity) entity).getHealth() > 0) {
-					plugin.updateStat((Player) damager, "damagedealt", typeName, amount, false);
-					plugin.updateStat((Player) damager, "damagedealt", "total", amount, false);
-					if (amount >= ((LivingEntity) entity).getHealth() && plugin.stats.keySet().contains(((Player) damager).getName())) {
+					plugin.updateStat((Player) damager, "damagedealt", typeName, amount,false);
+					plugin.updateStat((Player) damager, "damagedealt", "total", amount,false);
+					if (amount >= ((LivingEntity) entity).getHealth() && plugin.getPlayerStat(((Player) damager).getName())!=null) {
 						if (getEntFromEnt(entity, false) == null)
 							saveEntToEnt(damager, entity);
 					}
 				}
 			}
-
 		}
 		if (entity instanceof Player) {
 			typeName = EntToString(damager);
 			if (((LivingEntity) entity).getHealth() > 0) {
-				plugin.updateStat((Player) entity, "damagetaken", typeName, amount, false);
-				plugin.updateStat((Player) entity, "damagetaken", "total", amount, false);
-				if (amount >= ((Player) entity).getHealth() && plugin.stats.keySet().contains(((Player) entity).getName())) {
+				plugin.updateStat((Player) entity, "damagetaken", typeName, amount,false);
+				plugin.updateStat((Player) entity, "damagetaken", "total", amount,false);
+				if (amount >= ((Player) entity).getHealth() && plugin.getPlayerStat(((Player) entity).getName())!=null) {
 					if (getEntFromEnt(entity, false) == null)
 						saveEntToEnt(damager, entity);
 				}
@@ -278,56 +272,57 @@ public class StatsEntityListener extends EntityListener {
 		this.plugin = plugin;
 	}
 
-	@Override
+    @Override
 	public void onEntityDeath(EntityDeathEvent event) {
 		Entity e = getEntFromEnt(event.getEntity(), true);
 		if (event.getEntity() instanceof Player) {
 
 			Player p = (Player) event.getEntity();
-			PlayerStat ps = plugin.stats.get(p.getName());
+			PlayerStat ps = plugin.getPlayerStat(p.getName());
 			if (ps == null)
 				return;
 			ps.skipTeleports = 1;
-			plugin.updateStat(p, "deaths", "total", 1, false);
+			plugin.updateStat(p, "deaths", "total", 1,false);
 			String otherReason = otherDeathCauses.get(p);
 			otherReason = otherReason != null ? otherReason : "unknown";
 			if (StatsSettings.deathNotifying) {
 				String name = p.getDisplayName();
 				String message = name + " &4died";
 				if (e instanceof Player) {
-					plugin.updateStat(((Player) e), "kills", "total", 1, false);
-					plugin.updateStat(((Player) e), "kills", "player", 1, false);
-					message = name + " &4was killed by &8" + ((Player) e).getDisplayName();
+					plugin.updateStat(((Player) e), "kills", "total", 1,false);
+					plugin.updateStat(((Player) e), "kills", "player", 1,false);
+					String name2 = ((Player) e).getName();
+					message = name + " &4was killed by &8" + name2;
 				} else if (e instanceof LivingEntity) {
 					message = name + " &4was killed by &8" + EntToString(e);
 				} else if (otherReason != null) {
-					message = name + " &4" + getNiceDamageString(otherReason);
+					message = name + " &4"+getNiceDamageString(otherReason);
 				} else {
 					message = name + " &4died";
 				}
-				Messaging.worldbroadcast(event.getEntity().getWorld(), message);
+				Messaging.worldbroadcast(event.getEntity().getWorld(), message);	
 			}
 			if (e instanceof LivingEntity) {
-				plugin.updateStat(p, "deaths", EntToString(e), 1, false);
-				if (e instanceof Player) {
-					StatsPlayerDeathByPlayerEvent ev = new StatsPlayerDeathByPlayerEvent(event, (Player) event.getEntity(), (Player) e);
+				plugin.updateStat(p, "deaths", EntToString(e), 1,false);
+				if(e instanceof Player) {
+					StatsPlayerDeathByPlayerEvent ev = new StatsPlayerDeathByPlayerEvent(event,(Player)event.getEntity(),(Player)e);
 					plugin.getServer().getPluginManager().callEvent(ev);
-				} else {
-					StatsPlayerDeathByEntityEvent ev = new StatsPlayerDeathByEntityEvent(event, (Player) event.getEntity(), e);
+				} else  {
+					StatsPlayerDeathByEntityEvent ev = new StatsPlayerDeathByEntityEvent(event,(Player)event.getEntity(),e);
 					plugin.getServer().getPluginManager().callEvent(ev);
 				}
 			} else if (otherReason != null) {
-				plugin.updateStat(p, "deaths", otherReason, 1, false);
-				StatsPlayerDeathByOtherEvent ev = new StatsPlayerDeathByOtherEvent(event, (Player) event.getEntity(), otherReason);
+				plugin.updateStat(p, "deaths", otherReason, 1,false);
+				StatsPlayerDeathByOtherEvent ev = new StatsPlayerDeathByOtherEvent(event,(Player)event.getEntity(),otherReason);
 				plugin.getServer().getPluginManager().callEvent(ev);
 			}
 			otherDeathCauses.remove(p);
 
 		} else if (event.getEntity() instanceof LivingEntity) {
 			if (e instanceof Player) {
-				plugin.updateStat((Player) e, "kills", "total", 1, false);
-				plugin.updateStat((Player) e, "kills", EntToString(event.getEntity()), 1, false);
-				StatsMobDeathByPlayerEvent ev = new StatsMobDeathByPlayerEvent(event, (Player) e, event.getEntity());
+				plugin.updateStat((Player) e, "kills", "total", 1,false);
+				plugin.updateStat((Player) e, "kills", EntToString(event.getEntity()), 1,false);
+				StatsMobDeathByPlayerEvent ev = new StatsMobDeathByPlayerEvent(event, (Player)e,event.getEntity());
 				plugin.getServer().getPluginManager().callEvent(ev);
 			}
 			entsKilledByEnt.remove(e);
@@ -335,31 +330,33 @@ public class StatsEntityListener extends EntityListener {
 		entsKilledByEnt.remove(event.getEntity());
 	}
 
-	@Override
+
+
+    @Override
 	public void onEntityCombust(EntityCombustEvent event) {
 
 	}
 
-	@Override
+    @Override
 	public void onEntityDamage(EntityDamageEvent event) {
 		if (event.isCancelled())
 			return;
-		if (event instanceof EntityDamageByProjectileEvent) {
-			if (!checkEntDamage(event.getEntity(), ((EntityDamageByProjectileEvent) event).getDamager(), event.getDamage())) {
+		if(event instanceof EntityDamageByProjectileEvent) {
+			if(!checkEntDamage(event.getEntity(), ((EntityDamageByProjectileEvent)event).getDamager(), event.getDamage())) {
+				event.setCancelled(true);
+			} 
+		} else if(event instanceof EntityDamageByEntityEvent) {
+			if(!checkEntDamage(((EntityDamageByEntityEvent)event).getEntity(), ((EntityDamageByEntityEvent)event).getDamager(), event.getDamage()))  {
 				event.setCancelled(true);
 			}
-		} else if (event instanceof EntityDamageByEntityEvent) {
-			if (!checkEntDamage(((EntityDamageByEntityEvent) event).getEntity(), ((EntityDamageByEntityEvent) event).getDamager(), event.getDamage())) {
-				event.setCancelled(true);
-			}
-		} else if (event instanceof EntityDamageByBlockEvent) {
-			checkOtherDamage((EntityDamageByBlockEvent) event);
+		} else if(event instanceof EntityDamageByBlockEvent) {
+			checkOtherDamage((EntityDamageByBlockEvent)event);
 		} else {
 			checkOtherDamage(event);
 		}
 	}
 
-	@Override
+    @Override
 	public void onEntityExplode(EntityExplodeEvent event) {
 	}
 

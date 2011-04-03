@@ -20,18 +20,12 @@ package com.nidefawl.Stats.util;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 
 import com.nidefawl.Achievements.Achievements;
 import com.nidefawl.Stats.Stats;
@@ -46,21 +40,7 @@ public class Updater {
 	/**
 	 * File used to obtain the latest version
 	 */
-	private final static String VERSION_FILE = "VERSION";
-
-	/**
-	 * File used for the distribution
-	 */
-	private final static String DIST_FILE = "Stats.jar";
-	/**
-	 * File used for the distribution
-	 */
-	private final static String ACHDIST_FILE = "Achievements.jar";
-
-	/**
-	 * List of files to download
-	 */
-	private List<UpdaterFile> needsUpdating = new ArrayList<UpdaterFile>();
+	private final static String VERSION_FILE = "VERSIONS";
 
 	/**
 	 * Internal config
@@ -71,188 +51,22 @@ public class Updater {
 
 	public Updater(Stats plugin) {
 		this.plugin = plugin;
-		// enableSSL();
-
-		/*
-		 * Default config values
-		 */
 		config.put("sqlite", "1.00");
-
-		/*
-		 * Parse the internal config
-		 */
+		config.put("mysql", "1.00");
 		parseInternalConfig();
 	}
-
-	/**
-	 * Check for dependencies
-	 * 
-	 * @return true if Stats should be reloaded
-	 */
-	public void check() {
-		String[] paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar" };
-
-		paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar" };
-		for (String path : paths) {
-			File file = new File(path);
-
-			if (file != null && !file.exists() && !file.isDirectory()) {
-				UpdaterFile updaterFile = new UpdaterFile(UPDATE_SITE + path);
-				updaterFile.setLocalLocation(path);
-
-				needsUpdating.add(updaterFile);
-			}
-		}
-
-		double latestVersion = getLatestPluginVersion();
-
-		if (latestVersion > Stats.version) {
-			Stats.LogInfo("Update detected for Stats");
-			Stats.LogInfo("Latest version: " + latestVersion);
-		}
-		if (new File("plugins/Achievements.jar").exists()) {
-			try {
-				latestVersion = getLatestAchievemntsPluginVersion();
-				if (latestVersion > Double.parseDouble(Achievements.version)) {
-					Stats.LogInfo("Update detected for Achievements");
-					Stats.LogInfo("Latest version: " + latestVersion);
-				}
-			} catch (Exception e) {
-				Stats.LogError("Exception while updating Achievements plugin: " + e);
-				e.printStackTrace();
-			}
-		}
-	}
-
-	/**
-	 * Force update of binaries
-	 */
-	private void requireBinaryUpdate() {
-		String[] paths = new String[] { "lib/sqlite.jar", getFullNativeLibraryPath(), "lib/mysql.jar" };
-
-		for (String path : paths) {
-			UpdaterFile updaterFile = new UpdaterFile(UPDATE_SITE + path);
-			updaterFile.setLocalLocation(path);
-
-			needsUpdating.add(updaterFile);
-		}
-	}
-
-	/**
-	 * Check to see if the distribution is outdated
-	 * 
-	 * @return
-	 */
-	public boolean checkDist() {
-
-		double latestVersion = getLatestPluginVersion();
-
-		if (latestVersion > Stats.version) {
-			UpdaterFile updaterFile = new UpdaterFile(UPDATE_SITE + DIST_FILE);
-			updaterFile.setLocalLocation("plugins/Stats.jar");
-
-			needsUpdating.add(updaterFile);
-
-			try {
-				update();
-				Stats.LogInfo("Updated successful");
-				return true;
-			} catch (Exception e) {
-				Stats.LogInfo("Update failed: " + e.getMessage());
-				e.printStackTrace();
-			}
-		} else {
-			Stats.LogInfo("Stats plugin is up to date");
-		}
-
-		return false;
-	}
-
-	public boolean checkAchDist() {
-
-		if (new File("plugins/Achievements.jar").exists()) {
-			try {
-				double latestVersion = getLatestAchievemntsPluginVersion();
-				if (latestVersion > Double.parseDouble(Achievements.version)) {
-					UpdaterFile updaterFile = new UpdaterFile(UPDATE_SITE + ACHDIST_FILE);
-					updaterFile.setLocalLocation("plugins/Achievments.jar");
-					needsUpdating.add(updaterFile);
-					try {
-						update();
-						Stats.LogInfo("Updated successful");
-						return true;
-					} catch (Exception e) {
-						Stats.LogInfo("Update failed: " + e.getMessage());
-						e.printStackTrace();
-					}
-				} else {
-					Stats.LogInfo("Achievements plugin is up to date (" + (Achievements.version) + ")");
-				}
-			} catch (Exception e) {
-				Stats.LogError("Exception while updating Achievements plugin: " + e);
-				e.printStackTrace();
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Get the latest Achievemnts version
-	 * 
-	 * @return
-	 */
-	public double getLatestAchievemntsPluginVersion() {
-		try {
-			URL url = new URL(UPDATE_SITE + VERSION_FILE);
-
-			InputStream inputStream = url.openStream();
-			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-
-			bufferedReader.readLine();
-			bufferedReader.readLine();
-			double version = Double.parseDouble(bufferedReader.readLine());
-
-			bufferedReader.close();
-
-			return version;
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
-		return 0.00;
-	}
-
-	/**
-	 * Get the latest version
-	 * 
-	 * @return
-	 */
-	public double getLatestPluginVersion() {
-		try {
-			URL url = new URL(UPDATE_SITE + VERSION_FILE);
-
-			InputStream inputStream = url.openStream();
-			BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-
-			double version = Double.parseDouble(bufferedReader.readLine());
-
-			bufferedReader.close();
-
-			return version;
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
-		return 0.00;
-	}
-
 	/**
 	 * @return the current sqlite version
 	 */
 	public double getCurrentSQLiteVersion() {
 		return Double.parseDouble(config.get("sqlite"));
 	}
-
+	/**
+	 * @return the current sqlite version
+	 */
+	public double getCurrentMySQLVersion() {
+		return Double.parseDouble(config.get("mysql"));
+	}
 	public String combineSplit(int startIndex, String[] string, String seperator) {
 		if (string.length == 0)
 			return "";
@@ -384,114 +198,29 @@ public class Updater {
 		}
 	}
 
-	/**
-	 * @return the full path to the native library for sqlite
-	 */
-	public String getFullNativeLibraryPath() {
-		return getOSSpecificFolder() + getOSSpecificFileName();
-	}
 
-	/**
-	 * @return the os/arch specific file name for sqlite's native library
-	 */
-	public String getOSSpecificFileName() {
-		String osname = System.getProperty("os.name").toLowerCase();
-
-		if (osname.contains("windows")) {
-			return "sqlitejdbc.dll";
-		} else if (osname.contains("mac")) {
-			return "libsqlitejdbc.jnilib";
-		} else { /* We assume linux/unix */
-			return "libsqlitejdbc.so";
+	public boolean updateDist(boolean autoUpdate) throws Exception {
+		URL url = new URL(UPDATE_SITE + VERSION_FILE);
+		InputStream inputStream = url.openStream();
+		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+		double SQLiteVersion = Double.parseDouble(bufferedReader.readLine());
+		double MySQLVersion = Double.parseDouble(bufferedReader.readLine());
+		double StatsVersion = Double.parseDouble(bufferedReader.readLine());
+		double AchievementsVersion = Double.parseDouble(bufferedReader.readLine());
+		bufferedReader.close();
+		inputStream.close();
+		String plugPath = plugin.getDataFolder().getPath()+File.separator;
+		boolean updated = false;
+		updated |= (new UpdaterFile(UPDATE_SITE + "lib/mysql.jar",plugPath+"lib/mysql.jar",getCurrentMySQLVersion(),MySQLVersion)).update(true);
+		config.put("mysql", String.valueOf(MySQLVersion));
+		updated |= (new UpdaterFile(UPDATE_SITE + "lib/sqlite.jar",plugPath+"lib/sqlite.jar",getCurrentSQLiteVersion(),SQLiteVersion)).update(true);
+		config.put("sqlite", String.valueOf(SQLiteVersion));
+		if (new File("plugins/Achievements.jar").exists()) {
+			updated |= (new UpdaterFile(UPDATE_SITE + "Achievements.jar","plugins/Achievements.jar",Achievements.version,AchievementsVersion)).update(autoUpdate);
 		}
-	}
-
-	/**
-	 * @return the os/arch specific folder location for SQLite's native library
-	 */
-	public String getOSSpecificFolder() {
-		String osname = System.getProperty("os.name").toLowerCase();
-		String arch = System.getProperty("os.arch").toLowerCase();
-
-		if (osname.contains("windows")) {
-			return "lib/native/Windows/" + arch + "/";
-		} else if (osname.contains("mac")) {
-			return "lib/native/Mac/" + arch + "/";
-		} else { /* We assume linux/unix */
-			return "lib/native/Linux/" + arch + "/";
-		}
-	}
-
-	/**
-	 * Ensure we have all of the required files (if not, download them)
-	 */
-	public void update() throws Exception {
-		/*
-		 * Check internal versions
-		 */
-		double latestVersion = getLatestSQLiteVersion();
-		if (latestVersion > getCurrentSQLiteVersion()) {
-			requireBinaryUpdate();
-			Stats.LogInfo("Binary update required");
-			config.put("sqlite", latestVersion + "");
-		}
-
-		if (needsUpdating.size() == 0) {
-			return;
-		}
-
-		/*
-		 * Make the native folder hierarchy if needed
-		 */
-		File folder = new File(plugin.getDataFolder(), getOSSpecificFolder());
-		folder.mkdirs();
-
-		Stats.LogInfo("Need to download " + needsUpdating.size() + " file(s)");
-
-		Iterator<UpdaterFile> iterator = needsUpdating.iterator();
-
-		while (iterator.hasNext()) {
-			UpdaterFile item = iterator.next();
-
-			Stats.LogInfo(" - Downloading file : " + item.getRemoteLocation());
-
-			URL url = new URL(item.getRemoteLocation());
-			File file = new File(plugin.getDataFolder(), item.getLocalLocation());
-			if (file.exists()) {
-				file.delete();
-			}
-
-			InputStream inputStream = url.openStream();
-			OutputStream outputStream = new FileOutputStream(file);
-
-			saveTo(inputStream, outputStream);
-
-			inputStream.close();
-			outputStream.close();
-
-			Stats.LogInfo("  + Download complete");
-			iterator.remove();
-		}
-
-		/*
-		 * In the event we updated binaries, we should force an ini save!
-		 */
+		updated |= (new UpdaterFile(UPDATE_SITE + "Stats.jar","plugins/Stats.jar",Stats.version,StatsVersion)).update(autoUpdate);
 		saveInternal();
-	}
-
-	/**
-	 * Write an input stream to an output stream
-	 * 
-	 * @param inputStream
-	 * @param outputStream
-	 */
-	private void saveTo(InputStream inputStream, OutputStream outputStream) throws IOException {
-		byte[] buffer = new byte[1024];
-		int len = 0;
-
-		while ((len = inputStream.read(buffer)) > 0) {
-			outputStream.write(buffer, 0, len);
-		}
+		return updated;
 	}
 
 }

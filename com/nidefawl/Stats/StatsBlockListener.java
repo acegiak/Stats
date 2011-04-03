@@ -1,19 +1,15 @@
 package com.nidefawl.Stats;
 
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockCanBuildEvent;
 import org.bukkit.event.block.BlockDamageEvent;
-import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
-import org.bukkit.event.block.BlockInteractEvent;
 import org.bukkit.event.block.BlockListener;
 import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.BlockRedstoneEvent;
-import org.bukkit.event.block.BlockRightClickEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.event.block.SignChangeEvent;
 
@@ -77,15 +73,6 @@ public class StatsBlockListener extends BlockListener {
 	public void onBlockCanBuild(BlockCanBuildEvent event) {
 	}
 
-	/**
-	 * Called when a block flows (water/lava)
-	 * 
-	 * @param event
-	 *            Relevant event details
-	 */
-	@Override
-	public void onBlockFlow(BlockFromToEvent event) {
-	}
 
 	/**
 	 * Called when a block gets ignited
@@ -129,33 +116,8 @@ public class StatsBlockListener extends BlockListener {
 		plugin.updateStat(event.getPlayer(), "totalblockcreate", true);
 	}
 
-	/**
-	 * Called when a block is interacted with
-	 * 
-	 * @param event
-	 *            Relevant event details
-	 */
-	@Override
-	public void onBlockInteract(BlockInteractEvent event) {
-		if (event.isCancelled())
-			return;
-		if (!event.isPlayer())
-			return;
-		if (event.getBlock().getType() == Material.CHEST) {
-			plugin.updateStat((Player) event.getEntity(), "openchest", true);
-		}
-	}
 
-	/**
-	 * Called when a player right clicks a block
-	 * 
-	 * @param event
-	 *            Relevant event details
-	 */
-	@Override
-	public void onBlockRightClick(BlockRightClickEvent event) {
 
-	}
 
 	/**
 	 * Called when redstone changes From: the source of the redstone change To:

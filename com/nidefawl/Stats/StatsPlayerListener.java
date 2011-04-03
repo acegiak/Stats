@@ -2,6 +2,7 @@ package com.nidefawl.Stats;
 
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.entity.CraftItem;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.*;
 
 import com.nidefawl.Stats.datasource.PlayerStat;
@@ -20,7 +21,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 *            Relevant event details
 	 */
 	@Override
-	public void onPlayerQuit(PlayerEvent event) {
+	public void onPlayerQuit(PlayerQuitEvent event) {
 		plugin.logout(event.getPlayer().getName());
 		plugin.unload(event.getPlayer().getName());
 
@@ -36,8 +37,8 @@ public class StatsPlayerListener extends PlayerListener {
 	public void onPlayerChat(PlayerChatEvent event) {
 		if (event.isCancelled())
 			return;
-		plugin.updateStat(event.getPlayer(), "chat", true);
-		plugin.updateStat(event.getPlayer(), "chatletters", event.getMessage().length(), true);
+		plugin.updateStat(event.getPlayer(), "chat", false);
+		plugin.updateStat(event.getPlayer(), "chatletters", event.getMessage().length(), false);
 	}
 
 	/**
@@ -47,10 +48,10 @@ public class StatsPlayerListener extends PlayerListener {
 	 *            Relevant event details
 	 */
 	@Override
-	public void onPlayerCommandPreprocess(PlayerChatEvent event) {
+	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
 		if (event.isCancelled())
 			return;
-		plugin.updateStat(event.getPlayer(), "command", true);
+		plugin.updateStat(event.getPlayer(), "command", false);
 	}
 
 	/**
@@ -74,12 +75,12 @@ public class StatsPlayerListener extends PlayerListener {
 	 *            Relevant event details
 	 */
 	@Override
-	public void onPlayerTeleport(PlayerMoveEvent event) {
+	public void onPlayerTeleport(PlayerTeleportEvent event) {
 		if (event.isCancelled())
 			return;
 		if (event.getTo().equals(event.getPlayer().getWorld().getSpawnLocation()))
 			return;
-		PlayerStat ps = plugin.stats.get(event.getPlayer().getName());
+		PlayerStat ps = plugin.getPlayerStat(event.getPlayer().getName());
 		if (ps == null)
 			return;
 		if (ps.skipTeleports > 0) {
@@ -96,9 +97,14 @@ public class StatsPlayerListener extends PlayerListener {
 	 *            Relevant event details
 	 */
 	@Override
-	public void onPlayerItem(PlayerItemEvent event) {
+	public void onPlayerInteract(PlayerInteractEvent  event) {
 		if (event.isCancelled() || event.getBlockFace() == null)
 			return;
+		if(event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+			if (event.getClickedBlock().getType() == Material.CHEST) {
+				plugin.updateStat(event.getPlayer(), "openchest", true);
+			}
+		} else
 		switch (event.getMaterial()) {
 		case LAVA_BUCKET:
 		case WATER_BUCKET:
@@ -122,7 +128,7 @@ public class StatsPlayerListener extends PlayerListener {
 	 *            Relevant event details
 	 */
 	@Override
-	public void onPlayerJoin(PlayerEvent event) {
+	public void onPlayerJoin(PlayerJoinEvent event) {
 		plugin.load(event.getPlayer());
 		plugin.login(event.getPlayer());
 	}
@@ -160,8 +166,6 @@ public class StatsPlayerListener extends PlayerListener {
 	@Override
 	public void onPlayerDropItem(PlayerDropItemEvent event) {
 		if (event.isCancelled())
-			return;
-		if (event.getItemDrop() == null)
 			return;
 		if (event.getItemDrop() instanceof CraftItem) {
 			if (((CraftItem) event.getItemDrop()).getItemStack() == null)
@@ -214,8 +218,6 @@ public class StatsPlayerListener extends PlayerListener {
 	@Override
 	public void onPlayerPickupItem(PlayerPickupItemEvent event) {
 		if (event.isCancelled())
-			return;
-		if (event.getItem() == null)
 			return;
 		if (event.getItem() instanceof CraftItem) {
 			if (((CraftItem) event.getItem()).getItemStack() == null)

@@ -17,6 +17,15 @@
 
 package com.nidefawl.Stats.util;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URL;
+
+import com.nidefawl.Stats.Stats;
+
 public class UpdaterFile {
 
 	/**
@@ -28,10 +37,14 @@ public class UpdaterFile {
 	 * The local url location
 	 */
 	private String localLocation;
+	private double localVersion;
+	private double remoteVersion;
 
-	public UpdaterFile(String location) {
-		remoteLocation = location;
-		localLocation = location;
+	public UpdaterFile(String remoteLocation, String localLocation, double localVersion, double remoteVersion) {
+		this.remoteLocation = remoteLocation;
+		this.localLocation = localLocation;
+		this.localVersion = localVersion;
+		this.remoteVersion = remoteVersion;
 	}
 
 	/**
@@ -64,6 +77,46 @@ public class UpdaterFile {
 	 */
 	public void setRemoteLocation(String remoteLocation) {
 		this.remoteLocation = remoteLocation;
+	}
+
+	private void saveTo(InputStream inputStream, OutputStream outputStream) throws IOException {
+		byte[] buffer = new byte[1024];
+		int len = 0;
+
+		while ((len = inputStream.read(buffer)) > 0) {
+			outputStream.write(buffer, 0, len);
+		}
+	}
+
+	public boolean update(boolean autoUpdate) throws Exception {
+		if (remoteVersion > localVersion) {
+			if (autoUpdate) {
+				try {
+					Stats.LogInfo("Newer version found - Downloading file : " + remoteLocation);
+					URL url = new URL(remoteLocation);
+					File file = new File(localLocation);
+					file.mkdirs();
+					if (file.exists()) {
+						file.delete();
+					}
+					InputStream inputStream = url.openStream();
+					OutputStream outputStream = new FileOutputStream(file);
+					saveTo(inputStream, outputStream);
+					inputStream.close();
+					outputStream.close();
+					Stats.LogInfo("  + Download complete");
+					return true;
+				} catch (Exception e) {
+					Stats.LogInfo("Download failed: " + e.getMessage());
+					e.printStackTrace();
+					return false;
+				}
+			} else {
+				Stats.LogInfo("There is an update for " + localLocation);
+				return false;
+			}
+		}
+		return false;
 	}
 
 }

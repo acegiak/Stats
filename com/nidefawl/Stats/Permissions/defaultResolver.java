@@ -1,18 +1,18 @@
 package com.nidefawl.Stats.Permissions;
 
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 public class defaultResolver implements PermissionsResolver {
 
 	@Override
-	public boolean permission(Player player, String permCmd) {
-		if (player.isOp())
+	public boolean permission(CommandSender sender, String permCmd) {
+		if (sender.isOp())
 			return true;
-		if (permCmd.equals("/achievements") || permCmd.equals("/ach"))
+		if(!(sender instanceof Player)) return false;
+		if (permCmd.startsWith("achievements.view") || permCmd.equals("achievements.check"))
 			return true;
-		if (permCmd.equals("/listach") || permCmd.equals("/listachievements"))
-			return true;
-		if (permCmd.equals("/stats"))
+		if (permCmd.startsWith("stats.view")||permCmd.equals("stats.log"))
 			return true;
 		return false;
 	}
@@ -43,7 +43,7 @@ public class defaultResolver implements PermissionsResolver {
 	}
 
 	@Override
-	public boolean check() {
+	public boolean load() {
 		return true;
 	}
 

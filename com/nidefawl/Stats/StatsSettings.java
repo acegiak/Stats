@@ -31,7 +31,7 @@ public class StatsSettings {
 
 		boolean useSQL = properties.getBoolean("stats-use-sql");
 		properties.remove("stats-use-sql");
-		String dataSource = properties.getString("stats-datasource", useSQL ? "mysql" : "sqlite", "dropped flatfile support");
+		String dataSource = properties.getString("stats-datasource", useSQL ? "mysql" : "sqlite", "sqlite or mysql");
 		if (dataSource.toLowerCase().equals("mysql")) {
 			useMySQL = true;
 		} else {
@@ -45,6 +45,7 @@ public class StatsSettings {
 		if (premessage.length() > 0)
 			if (premessage.charAt(premessage.length() - 1) != ' ')
 				premessage += " ";
+		premessage = premessage.replaceAll("(&([a-f0-9]))", "\u00A7$2");
 		dbUrl = properties.getString("sql-db", "jdbc:mysql://localhost:3306/minecraft", "");
 		dbUsername = properties.getString("sql-user", "root", "");
 		dbPassword = properties.getString("sql-pass", "root", "");

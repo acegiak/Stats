@@ -22,7 +22,7 @@ public class PlayerStatSQL extends PlayerStat {
 		PreparedStatement ps = null;
 
 		try {
-			conn = StatsSQLConnectionManager.getConnection();
+			conn = StatsSQLConnectionManager.getConnection(StatsSettings.useMySQL);
 			if (close) {
 				conn.setAutoCommit(false);
 			}
@@ -31,7 +31,7 @@ public class PlayerStatSQL extends PlayerStat {
 				if (!cat.modified) {
 					continue;
 				}
-				for (String statName : cat.stats.keySet()) {
+				for (String statName : cat.getEntries()) {
 					int value = cat.get(statName);
 					ps = conn.prepareStatement(StatsSQLConnectionManager.getPreparedPlayerStatUpdateStatement());
 
@@ -40,7 +40,6 @@ public class PlayerStatSQL extends PlayerStat {
 					ps.setString(3, catName);
 					ps.setString(4, statName);
 					if (ps.executeUpdate() == 0) {
-						Stats.LogInfo("new stat!!!!");
 						ps = conn.prepareStatement(StatsSQLConnectionManager.getPreparedPlayerStatInsertStatement());
 						ps.setString(1, getName());
 						ps.setString(2, catName);
@@ -80,7 +79,7 @@ public class PlayerStatSQL extends PlayerStat {
 		ResultSet rs = null;
 
 		try {
-			conn = StatsSQLConnectionManager.getConnection();
+			conn = StatsSQLConnectionManager.getConnection(StatsSettings.useMySQL);
 			ps = conn.prepareStatement("SELECT * from " + StatsSettings.dbTable + " where player = ?");
 			ps.setString(1, getName());
 			rs = ps.executeQuery();

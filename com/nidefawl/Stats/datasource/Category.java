@@ -7,10 +7,10 @@ import java.util.logging.Logger;
 
 public class Category {
 	public boolean modified = false;
-	protected HashMap<String, Integer> stats;
+	public HashMap<String, Integer> stats;
 	static final Logger log = Logger.getLogger("Minecraft");
 
-	Category() {
+	public Category() {
 		stats = new HashMap<String, Integer>();
 		modified = false;
 	}

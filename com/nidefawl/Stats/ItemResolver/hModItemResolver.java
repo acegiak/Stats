@@ -6,25 +6,23 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.nidefawl.Stats.Stats;
 
 public class hModItemResolver implements itemResolver {
 	static final Logger log = Logger.getLogger("Minecraft");
 	protected Map<String, Integer> items;
-	String location = "items.txt";
+	String location = null;
+	
 
-	public hModItemResolver(String itemsTxtLocation) {
-		loadItems();
+	public hModItemResolver(File itemsFile) {
+		location = itemsFile.getPath();
+		loadItems(itemsFile);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.bukkit.nidefawl.Stats.itemResolver#loadItems()
-	 */
-	public void loadItems() {
-		if (!(new File(location).exists())) {
+	public void loadItems(File itemsFile) {
+		if (!itemsFile.exists()) {
 			FileWriter writer = null;
 			try {
 				writer = new FileWriter(location);
@@ -67,6 +65,7 @@ public class hModItemResolver implements itemResolver {
 				writer.write("sandstone:24\r\n");
 				writer.write("musicblock:25\r\n");
 				writer.write("noteblock:25\r\n");
+				writer.write("bedblock:26\r\n");
 				writer.write("wool:35\r\n");
 				writer.write("cloth:35\r\n");
 				writer.write("flower:37\r\n");
@@ -140,6 +139,8 @@ public class hModItemResolver implements itemResolver {
 				writer.write("jackolantern:91\r\n");
 				writer.write("jacko:91\r\n");
 				writer.write("cakeblock:92\r\n");
+				writer.write("repeateron:93\r\n");
+				writer.write("repeateroff:94\r\n");
 				writer.write("ironshovel:256\r\n");
 				writer.write("ironspade:256\r\n");
 				writer.write("ironpickaxe:257\r\n");
@@ -257,23 +258,27 @@ public class hModItemResolver implements itemResolver {
 				writer.write("bone:352\r\n");
 				writer.write("sugar:353\r\n");
 				writer.write("cake:354\r\n");
+				writer.write("bed:355\r\n");
+				writer.write("repeater:356\r\n");
 				writer.write("goldrecord:2256\r\n");
 				writer.write("greenrecord:2257\r\n");
 			} catch (Exception e) {
-				log.log(Level.SEVERE, "Exception while creating " + location, e);
+				Stats.LogError("Exception while creating " + location + " " + e);
+				e.printStackTrace();
 			} finally {
 				if (writer != null) {
 					try {
 						writer.close();
 					} catch (IOException e) {
-						log.log(Level.SEVERE, "Exception while closing writer for " + location, e);
+						Stats.LogError("Exception while closing writer for " + location + " " + e);
+						e.printStackTrace();
 					}
 				}
 			}
 		}
 		items = new HashMap<String, Integer>();
 		try {
-			Scanner scanner = new Scanner(new File(location));
+			Scanner scanner = new Scanner(itemsFile);
 			while (scanner.hasNextLine()) {
 				String line = scanner.nextLine();
 				if (line.startsWith("#")) {
@@ -289,28 +294,30 @@ public class hModItemResolver implements itemResolver {
 			}
 			scanner.close();
 		} catch (Exception e) {
-			log.log(Level.SEVERE, "Exception while reading " + location + " (Are you sure you formatted it correctly?)", e);
+			Stats.LogError("Exception while reading " + location + " (Are you sure you formatted it correctly?)"+ e);
+			e.printStackTrace();
 		}
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.bukkit.nidefawl.Stats.itemResolver#getItem(java.lang.String)
-	 */
+
 	@Override
 	public int getItem(String name) {
 		if (items.containsKey(name)) {
 			return items.get(name);
 		}
+		try {
+			int i = Integer.valueOf(name);
+			if(i>0 && i < 3000)  {
+				if(!getItem(i).equals(name)) {
+					return i;
+				}
+			}
+		} catch (Exception e) {
+		}
 		return 0;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.bukkit.nidefawl.Stats.itemResolver#getItem(int)
-	 */
+
 	@Override
 	public String getItem(int id) {
 		for (String name : items.keySet()) {
