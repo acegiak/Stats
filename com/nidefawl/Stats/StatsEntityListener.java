@@ -365,10 +365,10 @@ public class StatsEntityListener extends EntityListener {
 			return "(null)";
 		if (ent instanceof Chicken) {
 			return "Chicken";
-		} else if (ent instanceof Wolf) {
-			return "Wolf";
 		} else if (ent instanceof Cow) {
 			return "Cow";
+		} else if (ent instanceof Wolf) {
+			return "Wolf";
 		} else if (ent instanceof Spider) {
 			return "Spider";
 		} else if (ent instanceof Fish) {
